@@ -1,0 +1,9 @@
+pandas
+requests
+fastapi
+uvicorn
+python-multipart
+# optional for development
+pytest
+black
+isort
