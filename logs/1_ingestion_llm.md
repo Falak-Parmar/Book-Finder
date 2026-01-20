@@ -25,3 +25,10 @@
 - Enriched data saved to `data/processed/books_raw_enriched.json`.
 
 **Next**: Move to Storage phase to define the schema for persisting these records.
+
+## [2026-01-20] Ingestion Optimization: Asynchronous Processing
+**Issue**: The synchronous 1-second delay per book was projected to take over 10 hours for the full dataset (36k records).
+**Action**: Refactored `ingest.py` to use `asyncio` and `aiohttp`.
+- **Concurrency**: Process 5 requests in parallel using a Semaphore.
+- **Benefits**: Significantly higher throughput while maintaining a polite request rate.
+- **Status**: Script updated. Initial tests show successful retrieval with strict and fallback matching.

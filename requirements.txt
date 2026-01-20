@@ -3,6 +3,7 @@ requests
 fastapi
 uvicorn
 python-multipart
+aiohttp
 # optional for development
 pytest
 black
