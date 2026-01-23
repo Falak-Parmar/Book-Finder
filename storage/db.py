@@ -102,6 +102,31 @@ def get_book_by_id(book_id):
         return dict(row)
     return None
 
+def search_books(query=None, genre=None, limit=20):
+    conn = get_db_connection()
+    c = conn.cursor()
+    
+    sql = "SELECT * FROM books WHERE 1=1"
+    params = []
+    
+    if query:
+        # Simple LIKE search for now
+        sql += " AND (title LIKE ? OR author LIKE ? OR description LIKE ?)"
+        wildcard = f"%{query}%"
+        params.extend([wildcard, wildcard, wildcard])
+        
+    if genre:
+        sql += " AND genre LIKE ?"
+        params.append(f"%{genre}%")
+        
+    sql += " ORDER BY id DESC LIMIT ?"
+    params.append(limit)
+    
+    c.execute(sql, params)
+    rows = c.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
 if __name__ == "__main__":
     # Test initialization
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
