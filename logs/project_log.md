@@ -64,3 +64,13 @@
     - Support "Sample" (5) or "All" (36k) modes.
     - **Constraint**: Google Books Rate Limit (Public: ~1k/day, Auth: Higher but quota varies).
     - **Advice**: User ADVISED to add `GOOGLE_BOOKS_API_KEY` to environment before running full verification.
+
+## Data Transformation - 2026-01-24 14:40:53
+- **Task**: Clean `books_enriched.jsonl`
+- **Logic**: Removed entries where `found` is False OR (`categories` is [] AND `description` is null).
+- **Input File**: `data/processed/books_enriched.jsonl`
+- **Output File**: `data/processed/books_cleaned.jsonl`
+- **Stats**:
+  - Total Records: 36358
+  - Removed Records: 5215
+  - Kept Records: 31143
