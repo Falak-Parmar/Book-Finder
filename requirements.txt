@@ -8,3 +8,4 @@ aiohttp
 pytest
 black
 isort
+sqlalchemy
