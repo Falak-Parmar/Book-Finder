@@ -74,3 +74,10 @@
   - Total Records: 36358
   - Removed Records: 5215
   - Kept Records: 31143
+
+## ISBN Enrichment - 2026-01-24 18:22:59
+- **Task**: Fetch ISBNs from OpenLibrary & OpenAlex
+- **Input/Output**: `data/processed/books_cleaned.jsonl`
+- **Stats**:
+  - Total Records Processed: 31143
+  - Records with ISBNs found: 0
