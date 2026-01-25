@@ -59,7 +59,8 @@ async def search_google_books(session: aiohttp.ClientSession, title: str, author
                     "categories": volume_info.get("categories", []),
                     "average_rating": volume_info.get("averageRating"),
                     "thumbnail": volume_info.get("imageLinks", {}).get("thumbnail"),
-                    "preview_link": volume_info.get("previewLink")
+                    "preview_link": volume_info.get("previewLink"),
+                    "industry_identifiers": volume_info.get("industryIdentifiers", [])
                 }
     except Exception as e:
         # print(f"Error searching for {title}: {e}")

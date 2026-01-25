@@ -64,13 +64,66 @@
     - Support "Sample" (5) or "All" (36k) modes.
     - **Constraint**: Google Books Rate Limit (Public: ~1k/day, Auth: Higher but quota varies).
     - **Advice**: User ADVISED to add `GOOGLE_BOOKS_API_KEY` to environment before running full verification.
+- **Outcome**: 
+    - Full run hit daily quota limit (~1000 requests).
+    - Matched records showed 78% similarity.
 
-## Data Transformation - 2026-01-24 14:40:53
+## [2026-01-24] Google Enrichment & Deduplication
+### User Prompt:
+> "Just add the ISBN for now... Make a new jsonl file from the cleaned jsonl with the ISBN."
+
+### ISBN Enrichment
+- **Goal**: Append ISBNs to `books_cleaned.jsonl` using Google Books API.
+- **Action**:
+    - Created `ingestion/append_isbns.py`.
+    - Implemented Unauthenticated Bypass (IP-based) to avoid Account Quota limits.
+    - **Concurrency**: 50. Supports Resume.
+    - **Progress**: ~11,000 / 31,000 processed.
+- **Next**: Consolidate, Dedup, and Store.
+
+## Data Transformation - 2026-01-24 21:58:01
 - **Task**: Clean `books_enriched.jsonl`
 - **Logic**: Removed entries where `found` is False OR (`categories` is [] AND `description` is null).
-- **Input File**: `data/processed/books_enriched.jsonl`
-- **Output File**: `data/processed/books_cleaned.jsonl`
+- **Input File**: `data/processed/books_cleaned_with_isbn.jsonl`
+- **Output File**: `data/processed/database_data.jsonl`
 - **Stats**:
-  - Total Records: 36358
-  - Removed Records: 5215
-  - Kept Records: 31143
+  - Total Records: 31143
+  - Removed Records: 21930
+  - Kept Records: 9213
+
+## Data Transformation - 2026-01-25 14:48:40
+- **Task**: Create `Google_cleaned.jsonl`
+- **Logic**: Merge CSV fields + Filter ISBN + Dedup + Select Columns.
+- **Input File**: `data/processed/books_with_isbn.jsonl`
+- **Output File**: `data/processed/Google_cleaned.jsonl`
+- **Stats**:
+  - Total scanned: 31143
+  - Removed (No ISBN/Dup): 21930
+  - Kept: 9213
+
+## Data Clean Up - 2026-01-25 15:00:00
+- **Task**: Deduplicate `Google_cleaned.jsonl`
+- **Logic**: Deduplicate by `google_id`.
+- **Input File**: `data/processed/Google_cleaned.jsonl`
+- **Output File**: `data/processed/google_deduped.jsonl`
+- **Stats**:
+  - Total Scanned: 31,143
+  - Removed (Duplicates): 4,970
+  - Kept: 26,173
+
+## Data Transformation - 2026-01-25 15:30:00
+- **Task**: Fix Unicode Escaping
+- **Logic**: Convert `\uXXXX` sequences to proper text.
+- **Input File**: `data/processed/google_deduped.jsonl`
+- **Output File**: `data/processed/google_deduped.jsonl` (Overwrite)
+- **Stats**:
+  - Processed: 26,173 records.
+
+## Storage Implementation - 2026-01-25 15:45:00
+- **Task**: Initialize SQLite Database
+- **Logic**: Create Schema (Books Table) + Indexing + Data Load.
+- **Input File**: `data/processed/google_deduped.jsonl`
+- **Output**: `data/books.db`
+- **Stats**:
+  - Loaded: 26,167 records (6 duplicates removed by DB unique constraint).
+
