@@ -11,42 +11,43 @@ MAX_CONCURRENT_REQUESTS = 3
 SAVE_INTERVAL = 20
 GOOGLE_VOLUME_API = "https://www.googleapis.com/books/v1/volumes/{}"
 
-def clean_text(text):
+def clean_text(text):    # helper function to normalize text fields (titles, authors) before sending them to the API.
     if not isinstance(text, str):
         return ""
-    text = " ".join(text.split())
-    text = text.strip(".,/:;")
+    text = " ".join(text.split())    #collapses multiple spaces into one and removes hidden newlines.
+    text = text.strip(".,/:;")    #removes common punctuation.
     return text
 
-async def search_google_books(session: aiohttp.ClientSession, title: str, author: str, retries=0) -> Optional[Dict[str, Any]]:
+# search Google Books API for a book by title and author
+async def search_google_books(session: aiohttp.ClientSession, title: str, author: str, retries=0) -> Optional[Dict[str, Any]]:  
     base_url = "https://www.googleapis.com/books/v1/volumes"
-    query = f"intitle:{title}"
+    query = f"intitle:{title}"    # search for the book by title
     if author:
-        query += f"+inauthor:{author}"
+        query += f"+inauthor:{author}"    # search for the book by author
     
     params = {
-        "q": query,
-        "maxResults": 1,
-        "langRestrict": "en"
+        "q": query, # search query
+        "maxResults": 1, # maximum number of results to return
+        "langRestrict": "en" # restrict results to English
     }
     
-    backoff = 2 ** retries
+    backoff = 2 ** retries    # exponential backoff
     if retries > 5:
         # print(f"Max retries reached for {title}")
         return None
 
     try:
-        async with session.get(base_url, params=params) as response:
-            if response.status == 429:
-                wait_time = min(backoff * 1.5, 60)
-                # print(f"Rate limited. Waiting {wait_time}s... (Retry {retries+1})")
-                await asyncio.sleep(wait_time)
-                return await search_google_books(session, title, author, retries+1)
+        async with session.get(base_url, params=params) as response: 
+            if response.status == 429:    # if too many requests
+                wait_time = min(backoff * 1.5, 60)    
+                # print(f"Rate limited. Waiting {wait_time}s... (Retry {retries+1})") 
+                await asyncio.sleep(wait_time)    # wait for the backoff period
+                return await search_google_books(session, title, author, retries+1)    # retry the request
             
-            response.raise_for_status()
+            response.raise_for_status()    # raise an exception if the request was not successful
             data = await response.json()
             
-            if "items" in data and len(data["items"]) > 0:
+            if "items" in data and len(data["items"]) > 0:  
                 item = data["items"][0]
                 volume_info = item.get("volumeInfo", {})
                 
@@ -64,10 +65,11 @@ async def search_google_books(session: aiohttp.ClientSession, title: str, author
                     "preview_link": volume_info.get("previewLink"),
                     "industry_identifiers": volume_info.get("industryIdentifiers", [])
                 }
-    except Exception:
+    except Exception: # catch any exceptions that may occur
         pass
     
     return None
+
 
 async def fetch_isbns(session, google_id):
     if not google_id: return []
@@ -80,10 +82,11 @@ async def fetch_isbns(session, google_id):
                 data = await response.json()
                 return data.get("volumeInfo", {}).get("industryIdentifiers", [])
             elif response.status == 429:
-                return "RATE_LIMIT"
+                return "RATE_LIMIT"    
     except Exception:
         pass
     return []
+
 
 async def process_book(session, row, semaphore):
     async with semaphore:
@@ -94,21 +97,9 @@ async def process_book(session, row, semaphore):
             return None
 
         # 1. Search Google
-        google_data = await search_google_books(session, original_title, original_author)
+        google_data = await search_google_books(session, original_title, original_author)    # await suspends this task until the API responds. Other tasks continue running meanwhile.
         
-        # 2. Enrich with ISBNs if found (Secondary fetch if needed? Actually search_google_books already gets industry_identifiers, 
-        # but append_isbns logic seemed to imply re-fetching or fetching details by ID. 
-        # However, the volume list endpoint 'items' often contains identifiers. 
-        # The original append_isbns logic fetched by ID. Let's keep that logic available if search result lacks them or just rely on search.
-        # Actually, let's keep it simple: Search returns identifiers. Use them.
-        # But if we want to be robust and match the old pipeline which had a separate ISBN step...
-        # The old append_isbns.py fetched by ID *if* google_data existed. 
-        # Let's integrate it: if search returns data, we can optionally fetch by ID to be sure we get everything, 
-        # but usually search response has it.
-        # Let's stick closer to the "Search" logic primarily, but if that misses ISBNs, we could try fetch.
-        # For this consolidation, I'll rely on the search result which usually includes identifiers.
-        
-        await asyncio.sleep(0.5) 
+        await asyncio.sleep(0.5)    # pause for 0.5 seconds to avoid overwhelming the API
         
         return {
             "original_id": row.get("Acc. No."),
@@ -118,9 +109,10 @@ async def process_book(session, row, semaphore):
             "found": google_data is not None
         }
 
+# This function prevents duplicate processing.
 def load_processed_ids(output_file: str) -> Set[Any]:
     processed_ids = set()
-    if os.path.exists(output_file):
+    if os.path.exists(output_file):    # if the file exists
         with open(output_file, "r", encoding='utf-8') as f:
             for line in f:
                 try:
