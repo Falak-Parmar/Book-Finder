@@ -137,7 +137,7 @@ async def main():
     parser.add_argument("--output", type=str, default="data/processed/books_enriched.jsonl")
     args = parser.parse_args()
 
-    print(f"Reading from {args.input}...")
+    print(f"Reading from {args.input}...", flush=True)
     try:
         df = pd.read_csv(args.input)
     except FileNotFoundError:
@@ -145,7 +145,7 @@ async def main():
         return
 
     processed_ids = load_processed_ids(args.output)
-    print(f"Found {len(processed_ids)} already processed records.")
+    print(f"Found {len(processed_ids)} already processed records.", flush=True)
 
     # Filter DF - Ensure string comparison
     df["Acc. No."] = df["Acc. No."].astype(str)
@@ -154,7 +154,7 @@ async def main():
     if args.limit:
         df_to_process = df_to_process.head(args.limit)
     
-    print(f"Processing {len(df_to_process)} records...")
+    print(f"Processing {len(df_to_process)} records...", flush=True)
 
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
     
@@ -174,7 +174,7 @@ async def main():
                         f.write(json.dumps(res) + "\n")
             
             total_processed += len(batch_results)
-            print(f"Processed {total_processed}/{len(rows)}...")
+            print(f"Processed {total_processed}/{len(rows)} across all batches...", flush=True)
 
     print("Done.")
 

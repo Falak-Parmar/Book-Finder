@@ -53,17 +53,28 @@ def get_shelf_id() -> str:
 def download_bibtex(shelf_id: str) -> Optional[str]:
     """
     Downloads the BibTeX file for the given shelf ID.
+    Checks if the response is actually a BibTeX file and not a security check page.
     """
     url = DOWNLOAD_URL_TEMPLATE.format(shelf_id)
     logger.info(f"Downloading BibTeX from {url}...")
     
     try:
         headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/plain,application/x-bibtex,*/*"
         }
         response = requests.get(url, timeout=30, headers=headers)
         response.raise_for_status()
         
+        content = response.content.decode('utf-8', errors='ignore')
+        
+        # Check if it looks like a BibTeX file (starts with @)
+        # If it looks like HTML (starts with <!DOCTYPE or <html), it's likely a security check
+        if content.strip().startswith("<") or "Security Check" in content:
+            logger.warning("Security Check detected (Altcha). Download ignored to protect existing data.")
+            logger.warning("Please visit the OPAC in your browser to clear the check if this persists.")
+            return None
+
         if not os.path.exists(DATA_DIR):
             os.makedirs(DATA_DIR)
             
@@ -77,13 +88,14 @@ def download_bibtex(shelf_id: str) -> Optional[str]:
         logger.error(f"Error downloading BibTeX: {e}")
         return None
 
-def parse_and_append(bib_file: str):
+def parse_and_append(bib_file: str) -> int:
     """
     Parses the BibTeX file and appends new entries to the CSV.
+    Returns the number of new records added.
     """
     if not os.path.exists(bib_file):
         logger.error(f"BibTeX file {bib_file} not found.")
-        return
+        return 0
 
     logger.info("Parsing BibTeX file...")
     with open(bib_file, 'r', encoding='utf-8') as bibtex_file:
@@ -91,7 +103,7 @@ def parse_and_append(bib_file: str):
 
     if not bib_database.entries:
         logger.warning("No entries found in BibTeX file.")
-        return
+        return 0
 
     # Load existing CSV to check for duplicates
     if os.path.exists(CSV_PATH):
@@ -101,7 +113,7 @@ def parse_and_append(bib_file: str):
             existing_acc_nos = set(df_existing['Acc. No.'].astype(str).tolist())
         except Exception as e:
             logger.error(f"Error reading existing CSV: {e}")
-            return
+            return 0
     else:
         existing_acc_nos = set()
         df_existing = pd.DataFrame(columns=["Acc. No.", "Author/Editor", "Title"])
@@ -109,12 +121,7 @@ def parse_and_append(bib_file: str):
     new_rows = []
     
     for entry in bib_database.entries:
-        # Extract Acc. No. from ID (e.g., "34341" from "34341" or "book:34341")
-        # The ID in bibtexparser is in entry['ID']
         bib_id = entry.get('ID', '')
-        
-        # Assumption: The ID is the Acc. No. or contains it.
-        # Based on user feedback: "the first value (rn a 5 digit number) is the acc. no."
         acc_no = bib_id.strip()
         
         if acc_no in existing_acc_nos:
@@ -124,44 +131,55 @@ def parse_and_append(bib_file: str):
         title = entry.get('title', '').strip()
         author = entry.get('author', '').strip()
         
-        # Normalize author: BibTeX often has "Last, First", CSV might want "First Last" or keep as is.
-        # User's CSV seems to have "Author/Editor". I'll keep it as is from BibTeX for now.
-        
         new_row = {
             "Acc. No.": acc_no,
             "Author/Editor": author,
             "Title": title
-            # Add other columns if needed matching CSV structure, but these are the minimal required for ingestion
         }
         new_rows.append(new_row)
-        existing_acc_nos.add(acc_no) # Prevent internal duplicates in the same batch
+        existing_acc_nos.add(acc_no)
 
     if new_rows:
         df_new = pd.DataFrame(new_rows)
-        # Ensure only columns that exist in the target CSV are saved (or align them)
-        # Actually, simpler to just append columns that match.
-        
-        # We should align with existing CSV columns to avoid issues
-        # Create a DataFrame with all columns from existing, filled with NaN
+        # Create full DF with all columns from existing
         df_final = pd.DataFrame(new_rows, columns=df_existing.columns)
         
-        # Append to CSV
+        # Append to main CSV
         output_mode = 'a'
         header = not os.path.exists(CSV_PATH)
-        
         df_final.to_csv(CSV_PATH, mode=output_mode, header=header, index=False)
         logger.info(f"Appended {len(new_rows)} new records to {CSV_PATH}.")
+
+        # Save to temporary "sync" file for incremental enrichment
+        sync_csv = os.path.join(os.path.dirname(CSV_PATH), "current_sync.csv")
+        df_final.to_csv(sync_csv, index=False)
+        logger.info(f"Saved {len(new_rows)} records to {sync_csv} for incremental processing.")
+        
+        return len(new_rows)
     else:
         logger.info("No new records found to append.")
+        return 0
 
 def run_sync():
     """Main function to run the sync pipeline."""
     shelf_id = get_shelf_id()
     bib_file = download_bibtex(shelf_id)
+    
+    # Even if download fails, check if the file exists (maybe manually added)
+    if not bib_file and os.path.exists(NEW_ARRIVALS_FILE):
+        logger.info(f"Using existing BibTeX file: {NEW_ARRIVALS_FILE}")
+        bib_file = NEW_ARRIVALS_FILE
+
     if bib_file:
-        parse_and_append(bib_file)
+        new_count = parse_and_append(bib_file)
+        if new_count > 0:
+            # Exit with code 2 to indicate "Items Added" to the orchestrator
+            import sys
+            sys.exit(2)
     else:
         logger.error("Sync failed due to download error.")
+        import sys
+        sys.exit(1)
 
 if __name__ == "__main__":
     run_sync()
