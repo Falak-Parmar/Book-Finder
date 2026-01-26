@@ -42,8 +42,13 @@ def ingest_to_db():
                             skipped_count += 1
                             continue
                     
-                    # Also check by Google ID if ISBN missing (though model enforces unique ISBN_13 if not nullable? Schema says unique=True, index=True. But line 21 in db.py says unique=True. If it's None, unique constraint might treat it differently in SQLite, usually multiple NULLs allowed. But better to check.)
-                    # Actually, let's trust ISBN_13 as primary dedup key.
+                    # Also check by Google ID
+                    g_id = data.get("google_id")
+                    if g_id:
+                        existing = session.query(db.Book).filter(db.Book.google_id == g_id).first()
+                        if existing:
+                            skipped_count += 1
+                            continue
                     
                     # Convert list authors to string if needed. Model says String.
                     authors = data.get("authors")

@@ -32,7 +32,7 @@ class Book(Base):
     thumbnail = Column(String, nullable=True)
     published_date = Column(String, nullable=True)
     page_count = Column(Integer, nullable=True)
-    google_id = Column(String, index=True)
+    google_id = Column(String, unique=True, index=True)
     preview_link = Column(String, nullable=True)
     
     # Merged CSV Columns
@@ -131,9 +131,18 @@ def sync_data():
     import threading
     import sys
     
+    # Global lock to prevent concurrent syncs
+    sync_lock = threading.Lock()
+    
     def run_pipeline():
-        # Using sys.executable to ensure the same interpreter is used
-        subprocess.run([sys.executable, "main.py"], cwd=os.getcwd())
+        if not sync_lock.acquire(blocking=False):
+            print("Pipeline already running. Skipping trigger.")
+            return
+        try:
+            # Using sys.executable to ensure the same interpreter is used
+            subprocess.run([sys.executable, "main.py"], cwd=os.getcwd())
+        finally:
+            sync_lock.release()
         
     thread = threading.Thread(target=run_pipeline)
     thread.start()

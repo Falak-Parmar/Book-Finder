@@ -105,10 +105,8 @@ def dedup_step():
     total_records = 0
     kept_records = 0
     duplicate_records = 0
-    seen_ids = set()
-    
-    # We will write to a temp file then rename or just write to final target
-    # The dedicated deduplicate step wrote to google_deduped.jsonl
+    seen_google_ids = set()
+    seen_isbns = set()
     
     with open(OUTPUT_TRANSFORMED, 'r', encoding='utf-8') as infile, \
          open(OUTPUT_DEDUPED, 'w', encoding='utf-8') as outfile:
@@ -118,13 +116,22 @@ def dedup_step():
                 record = json.loads(line)
                 total_records += 1
                 g_id = record.get("google_id")
+                isbn = record.get("isbn_13")
                 
-                if g_id and g_id in seen_ids:
+                is_duplicate = False
+                if g_id and g_id in seen_google_ids:
+                    is_duplicate = True
+                elif isbn and isbn in seen_isbns:
+                    is_duplicate = True
+                
+                if is_duplicate:
                     duplicate_records += 1
                     continue
                 
                 if g_id:
-                    seen_ids.add(g_id)
+                    seen_google_ids.add(g_id)
+                if isbn:
+                    seen_isbns.add(isbn)
                 
                 # unicode fix inline: ensure_ascii=False
                 outfile.write(json.dumps(record, ensure_ascii=False) + "\n")
