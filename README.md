@@ -110,7 +110,7 @@ This ensures the pipeline remains **fault-tolerant**.
 
 **Why async?**
 
-- The CSV contains \~26,000 records
+- The CSV contains \~36,000 records
 - Synchronous API calls would be prohibitively slow and rate-limited
 
 **Output:**
