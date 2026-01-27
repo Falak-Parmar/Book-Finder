@@ -277,5 +277,10 @@ Most importantly, the project demonstrates how **engineering decisions** directl
 
 ## Authors
 
+202518053 : Falak Parmar
+202518035 : Aditya Jana
+
+---
+
 DA-IICT — Big Data Engineering Project
 
