@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 📟 Hyper-Expanded Technical Transcript: The Book-Finder Evolution
 
 This document is a raw, uncompressed, and exhaustive record of the technical dialogue, design pivots, and engineering hurdles encountered during the development of the Book-Finder Pipeline.
