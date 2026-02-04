@@ -1,8 +1,42 @@
 import pandas as pd
 import json
 import os
+import sys
+import time
+import statistics
 
-def generate_notebook():
+# Add project root to sys.path to allow imports from api/
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+try:
+    from api.serving import app
+    from fastapi.testclient import TestClient
+    HAS_API = True
+except ImportError as e:
+    print(f"Warning: Could not import API for benchmarking: {e}")
+    HAS_API = False
+
+def benchmark_api():
+    if not HAS_API:
+        return "N/A (API not available)"
+    
+    client = TestClient(app)
+    
+    # Warmup
+    client.get("/books/?limit=1")
+    
+    latencies = []
+    # Test 50 simple queries
+    for _ in range(50):
+        start = time.perf_counter()
+        client.get("/search/?q=Python")
+        end = time.perf_counter()
+        latencies.append((end - start) * 1000) # ms
+        
+    avg_latency = statistics.mean(latencies)
+    return f"{avg_latency:.2f} ms"
+
+def generate_notebook(api_latency):
     notebook_content = {
         "cells": [
             {
@@ -65,6 +99,17 @@ def generate_notebook():
                     "    unique_isbns = df_cleaned['isbn_13'].nunique()\n",
                     "    print(f\"Unique ISBN-13s: {unique_isbns}\")"
                 ]
+            },
+            {
+                "cell_type": "code",
+                "execution_count": None,
+                "metadata": {},
+                "outputs": [],
+                "source": [
+                    "# API Performance Metrics\n",
+                    f"# Average Latency (Search Endpoint): {api_latency}\n",
+                    "print(\"Note: API latency is benchmarked during script execution.\")"
+                ]
             }
         ],
         "metadata": {
@@ -118,11 +163,17 @@ def analyze_metrics():
         print(f"Successfully Enriched (Google Books): {successful_enrichment}")
         print(f"Enrichment Success Rate: {success_rate:.1f}%")
         print(f"Final Deduplicated Dataset Size: {final_count}")
+        
+        latency = benchmark_api()
+        print(f"Average Search Latency: {latency}")
         print("=======================\n")
+        
+        return latency
         
     except Exception as e:
         print(f"Analysis failed: {e}")
+        return "N/A"
 
 if __name__ == "__main__":
-    analyze_metrics()
-    generate_notebook()
+    latency_val = analyze_metrics()
+    generate_notebook(latency_val)
