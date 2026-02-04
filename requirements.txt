@@ -9,3 +9,5 @@ pytest
 black
 isort
 sqlalchemy
+sentence-transformers
+chromadb

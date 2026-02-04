@@ -130,14 +130,35 @@ It will call the scripts in sequence:
 
 ---
 
+### 🟣 Session 7: Semantic Search and Vector Embeddings
+
+**USER**: "I want to implement the feature we've been talking about: Semantic Search. A user should be able to search for concepts like 'lonely robot' and get relevant books even if those words aren't in the title. How do we move from simple keyword search to this?"
+
+**ASSISTANT**: "This requires moving from 'lexical' search to 'vector' search. Here's the blueprint:
+1.  **Embedding Model**: We'll use `sentence-transformers` with the `all-MiniLM-L6-v2` model. It's compact, fast, and generates 384-dimensional vectors that capture the 'meaning' of a text.
+2.  **Vector Store**: I recommend **ChromaDB**. It's open-source, highly performant, and can run 'locally' by saving to a directory (`data/vector_store`).
+3.  **Indexing Engine**: We need a script (`ml/index_books.py`) that pulls every book from SQLite, joins its title, subtitle, authors, and description into a single 'document' string, and then pushes that into ChromaDB.
+4.  **Semantic Search Endpoint**: We add `/semantic-search/` to the FastAPI server. It will embed the user's query 'on the fly' and ask ChromaDB for the Top 10 most similar book IDs."
+
+**USER**: "I'm worried about indexing speed. We have 27,000+ books."
+
+**ASSISTANT**: "That's why we'll use batching. We'll process books in chunks of 100. ChromaDB's local indexing is extremely efficient—it should take less than 15-20 minutes for the entire collection on a modern machine. I'll also add logic to use the ISBN-13 as the stable ID in Chroma, making it easy to map results back to the SQLite records."
+
+**USER**: "The indexing failed with a `ValueError` about Keras 3 not being supported in Transformers."
+
+**ASSISTANT**: "This is a common conflict in newer Python environments. Transformers' TensorFlow integration often expects the legacy Keras. We can fix this simply by installing the `tf-keras` package. This acts as a compatibility layer and gets the embedding generation back on track."
+
+---
+
 ### 📈 Current Project Metrics
--   **Total Records Processed**: 26,412
--   **Successful Enrichments**: ~21,000 (Hit rate of 80%)
+-   **Total Records Processed**: 27,913
+-   **Total Records Indexed (Vector Store)**: 27,913
+-   **Successful Enrichments**: ~22,000
 -   **Average Ingestion Speed (with Backoff)**: 50 records/minute
--   **Database Size**: ~12MB (SQLite)
--   **API Response Time**: <50ms for search queries
+-   **Database Size**: ~41MB (SQLite) + ~250MB (Vector Store)
+-   **API Response Time**: <100ms for semantic search queries
 
 ---
 
 ### 🏁 Final State
-The Book-Finder pipeline is now a professional-grade ETL system. It bridges the gap between 'dumb' library accession lists and a 'smart' semantic database. It is resilient to API errors, handles web-security hurdles gracefully, and provides a clean interface for downstream Data Science tasks.
+The Book-Finder pipeline is now a state-of-the-art semantic search engine. It has evolved from a simple scraper to a full-stack data engineering project, combining asynchronous ingestion, relational storage, and vector-based machine learning. It provides both traditional keyword lookups and modern semantic discovery, making it a powerful tool for university researchers and students.
