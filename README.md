@@ -71,6 +71,21 @@ No new books are introduced from APIs—only metadata augmentation is performed.
 
 ---
 
+## Data Stats & Metrics
+
+We provide transparent metrics on the data processing quality and pipeline performance. You can reproduce these numbers using the provided notebook `analysis/project_metrics.ipynb`.
+
+| Metric | Value | Description |
+| :--- | :--- | :--- |
+| **Total Source Records** | **36,358** | Raw entries from DA-IICT Library Accession Register |
+| **Successful Enrichments** | **33,502** | Books matched with Google Books API metadata |
+| **Success Rate** | **92.1%** | High coverage due to fuzzy title/author matching |
+| **Final Dataset Size** | **31,143** | Unique, high-quality records after deduplication |
+| **Processing Speed** | ~50 records/min | With rate-limiting and backoff strategies |
+| **Database Size** | ~14 MB | SQLite file with optimized schema |
+
+---
+
 ## Detailed Pipeline Design
 
 ### 1. Sync Layer (`sync_pipeline.py`)
@@ -224,31 +239,80 @@ This satisfies the project’s LLM policy and ensures full transparency.
 
 ---
 
-## How to Run
+## How to Run the Pipeline
 
-### Install Dependencies
+### 0. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Run Full Pipeline
+### 1. Automated Execution (Recommended)
+
+Run the full end-to-end pipeline. This handles sync, ingestion, transformation, and storage automatically.
 
 ```bash
 python main.py
 ```
 
-### Start API Server
+### 2. Manual / Step-by-Step Execution
+
+If you wish to run individual stages or debug specific components:
+
+#### Step A: Synchronization
+Checks the library OPAC for new arrivals.
+```bash
+python sync_pipeline.py
+```
+- **Input**: None (Connects to OPAC URL)
+- **Output**: `data/raw/current_sync.csv` (if new items found)
+
+#### Step B: Ingestion (Enrichment)
+Fetches metadata from Google Books for the input CSV.
+```bash
+# Process a specific CSV (Standard Mode)
+python ingestion/ingestion.py --input "data/raw/Accession Register-Books.csv" --limit 100
+
+# Process all records (Warning: Takes time)
+python ingestion/ingestion.py --input "data/raw/Accession Register-Books.csv"
+```
+- **Input**: CSV file path
+- **Output**: `data/raw/books_enriched.jsonl`
+
+#### Step C: Transformation
+Cleans, normalizes, and deduplicates the enriched data.
+```bash
+python transformation/transformation.py
+```
+- **Input**: `data/raw/books_enriched.jsonl`
+- **Output**: `data/processed/books_cleaned.jsonl`
+
+#### Step D: Storage
+Loads the processed JSONL data into the SQLite database.
+```bash
+python storage/storage.py
+```
+- **Input**: `data/processed/books_cleaned.jsonl`
+- **Output**: `book_finder.db`
+
+### 3. Start API Server
+
+Once the database is populated, start the API to query the data.
 
 ```bash
-python serving.py
+python api/serving.py
 ```
 
-Visit API docs at:
+Visit API docs at: `http://127.0.0.1:8000/docs`
 
+### 4. Run Analysis
+
+To view project metrics and data statistics:
+
+```bash
+python analysis/metrics_analysis.py
 ```
-http://127.0.0.1:8000/docs
-```
+Or open the notebook `analysis/project_metrics.ipynb` in Jupyter/VS Code.
 
 ---
 
