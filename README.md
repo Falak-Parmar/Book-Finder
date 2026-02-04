@@ -83,7 +83,7 @@ We provide transparent metrics on the data processing quality and pipeline perfo
 | **Final Dataset Size** | **31,143** | Unique, high-quality records after deduplication |
 | **Processing Speed** | ~50 records/min | With rate-limiting and backoff strategies |
 | **Database Size** | ~14 MB | SQLite file with optimized schema |
-| **API Response Time** | **17.58ms** | Average latency for search queries (benchmarked) |
+| **API Response Time** | **~82.5 ms** | Average latency for search queries (benchmarked) |
 ---
 
 ## Detailed Pipeline Design
