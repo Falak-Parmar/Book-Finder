@@ -125,8 +125,11 @@ def load_processed_ids(output_file: str) -> Set[Any]:
 async def main():
     parser = argparse.ArgumentParser(description="Ingest books from Google Books API Async")
     parser.add_argument("--limit", type=int, help="Limit number of books to process", default=None)
+    # This allows the script to be run like: python ingestion.py --limit 100
+
     parser.add_argument("--input", type=str, default="data/raw/Accession Register-Books.csv")
     parser.add_argument("--output", type=str, default="data/processed/books_enriched.jsonl")
+    # overall:  python ingestion.py --limit 100 --input my_books.csv --output out.jsonl
     args = parser.parse_args()
 
     print(f"Reading from {args.input}...", flush=True)
@@ -140,15 +143,15 @@ async def main():
     print(f"Found {len(processed_ids)} already processed records.", flush=True)
 
     # Filter DF - Ensure string comparison
-    df["Acc. No."] = df["Acc. No."].astype(str)
-    df_to_process = df[~df["Acc. No."].isin(processed_ids)]
+    df["Acc. No."] = df["Acc. No."].astype(str)  # Converts the Acc. No. column to string type
+    df_to_process = df[~df["Acc. No."].isin(processed_ids)] # Selects only rows whose Acc. No. is not already processed
     
     if args.limit:
-        df_to_process = df_to_process.head(args.limit)
+        df_to_process = df_to_process.head(args.limit) # Limits the number of books to process
     
     print(f"Processing {len(df_to_process)} records...", flush=True)
 
-    semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS) # Limits the number of concurrent requests   
     
     async with aiohttp.ClientSession() as session:
         rows = df_to_process.to_dict('records')
