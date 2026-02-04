@@ -50,7 +50,7 @@ def ingest_to_db():
                             skipped_count += 1
                             continue
                     
-                    # Convert list authors to string if needed. Model says String.
+                    # Convert list authors to string if needed.
                     authors = data.get("authors")
                     if isinstance(authors, list):
                         authors = ", ".join(authors)
@@ -81,8 +81,8 @@ def ingest_to_db():
                     session.add(new_book)
                     added_count += 1
                     
-                    # Commit in batches or one by one? 
-                    # One by one is safer for IntegrityError on unexpected constraint
+                    # Commit in batches of 100 
+                    # Though One by one is safer for IntegrityError on unexpected constraint
                     if added_count % 100 == 0:
                          session.commit()
 
