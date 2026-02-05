@@ -21,9 +21,9 @@ RUN pip3 install --no-cache-dir gunicorn
 # Copy project files
 COPY . .
 
-# Pre-download the model
-# This ensures the model is cached in the image layer
-RUN python scripts/download_model.py
+# Pre-download the model and run indexing
+# This ensures the model is cached and vectors are generated in the image layer
+RUN python scripts/download_model.py && python ml/index_books.py
 
 # Expose port (Render sets $PORT env var)
 EXPOSE 8000
