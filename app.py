@@ -156,6 +156,7 @@ st.markdown("""
 # --- Logic ---
 
 PAGE_SIZE = 15
+DISTANCE_THRESHOLD = 0.7  # Lower distance means higher similarity
 
 @st.cache_resource(show_spinner=False)
 def get_embedding_manager():
@@ -188,22 +189,29 @@ def show_book_details(book):
         st.markdown("#### Description")
         st.write(description)
 
-def perform_semantic_search(query, manager, session, n_results=300):
+def perform_semantic_search(query, manager, session, n_results=300, threshold=DISTANCE_THRESHOLD):
     results = manager.search(query, n_results=n_results)
     ids = results.get("ids", [[]])[0]
+    distances = results.get("distances", [[]])[0]
     
     if not ids:
         return []
         
+    # Filter by threshold
+    filtered_ids = [idx for idx, dist in zip(ids, distances) if dist <= threshold]
+    
+    if not filtered_ids:
+        return []
+        
     books = session.query(db.Book).filter(
         or_(
-            db.Book.isbn_13.in_(ids),
-            db.Book.google_id.in_(ids)
+            db.Book.isbn_13.in_(filtered_ids),
+            db.Book.google_id.in_(filtered_ids)
         )
     ).all()
     
     # Sort by relevance (Chromadb order)
-    id_to_index = {idx: i for i, idx in enumerate(ids)}
+    id_to_index = {idx: i for i, idx in enumerate(filtered_ids)}
     books.sort(key=lambda b: id_to_index.get(b.isbn_13) if b.isbn_13 in id_to_index else id_to_index.get(b.google_id, 999))
     return books
 
