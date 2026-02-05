@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  book-finder:
+    build: .
+    container_name: book-finder-app
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+    restart: always
+    environment:
+      - PYTHONUNBUFFERED=1

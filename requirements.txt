@@ -11,3 +11,5 @@ isort
 sqlalchemy
 sentence-transformers
 chromadb
+tf-keras
+streamlit
