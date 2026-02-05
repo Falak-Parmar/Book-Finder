@@ -1,350 +1,334 @@
-# 📚 Book Finder — Big Data Engineering Project
-
-## Overview
-
-This project is part of the **Big Data Engineering** course at **DA-IICT**. The objective is to design and implement a **robust data engineering pipeline** that transforms sparse university library records into a **high-quality, enriched dataset** suitable for powering an ML-based semantic book search system.
-
-The motivating use case is:
-
-> A user should be able to search for *"a story about a lonely robot in space"* and retrieve relevant books, even if those exact words do not appear in the original library metadata.
-
-This repository implements **Phase 1 (Data Engineer role)** of the overall project.
+# Book Finder — Big Data Engineering  
+### End-to-End ETL Pipeline + Google Books Enrichment + FastAPI Service  
+**Phase 1 Data Engineering Project**
 
 ---
 
-## Problem Context & Motivation
+## 1. Introduction & Motivation
 
-University library datasets are typically **operational**, not analytical:
+Modern semantic search systems rely on **clean, structured, and enriched data**.  
+Our university library records (OPAC) are often:
 
-- Titles and authors are present
-- Rich metadata (ISBNs, descriptions, subjects, thumbnails) is missing
-- Records are inconsistent and difficult to use for downstream ML tasks
+- Sparse (basic title/author only)
+- Missing rich metadata (descriptions, categories, thumbnails)
+- Inconsistent for machine learning tasks
 
-At DA-IICT, the library accession register CSV contains only:
+This project addresses those challenges by building a **production-style data pipeline**
+that transforms raw accession registers into a **queryable, enriched database**, and exposes
+the data through a **FAST API** for downstream applications such as:
 
-- Accession metadata
-- Title
-- Author / Editor
-- Publisher, Year, Pages
+- Semantic search (Phase 2)
+- Recommendation systems
+- Library analytics dashboards
 
-This project bridges that gap by:
-
-1. Treating the DA-IICT CSV as the **ground-truth scope**
-2. Enriching each record using **external public APIs** (Google Books)
-3. Cleaning, deduplicating, and normalizing the data
-4. Exposing the curated dataset via a **FastAPI service** for future ML use
-
----
-
-## High-Level Architecture
-
-The pipeline is designed as **four explicit stages**, mirroring real-world data engineering systems:
-
-1. **Ingestion** – Collect raw data from multiple sources
-2. **Transformation** – Clean, normalize, and deduplicate
-3. **Storage** – Persist curated data in a relational database
-4. **Serving** – Expose data through stable APIs
-
-Each stage is implemented as a **separate module**, enabling clarity, testability, and extensibility.
+The project follows **real-world data engineering principles**:
+- Clear separation of pipeline stages
+- Deterministic and resume-safe processing
+- CLI-driven configuration
+- Database-backed persistence
+- API-based data access
 
 ---
 
-## Data Sources
+## 2. High-Level Capabilities
 
-### Primary Source (Scope Anchor)
+This system provides:
 
-- **DA-IICT Library Accession Register (CSV)**
-- Defines the authoritative list of books
-- Ensures compliance with the DAU-only scope requirement
-
-### Secondary Source (Enrichment)
-
-- **Google Books API**
-- Used only to enrich *existing DA-IICT titles*
-- Provides:
-  - ISBN-10 / ISBN-13
-  - Descriptions / blurbs
-  - Subjects / categories
-  - Thumbnails and language metadata
-
-No new books are introduced from APIs—only metadata augmentation is performed.
+- **Robust Ingestion**: Asynchronous fetching from Google Books API
+- **Smart Synchronization**: Altcha-aware scraping of Koha OPAC
+- **Data Transformation**: Deduplication, normalization, and cleaning
+- **Persistent Storage**: SQLAlchemy + SQLite architecture
+- **Pipeline Orchestration**: Unified controller for all stages
+- **FastAPI Service**: REST interface for browsing and triggering syncs
+- **Fully Self-Documenting CLI**: `--help` support for every script
 
 ---
 
-## Data Stats & Metrics
+## 3. Project Structure & Responsibilities
 
-We provide transparent metrics on the data processing quality and pipeline performance. You can reproduce these numbers using the provided notebook `analysis/project_metrics.ipynb`.
-
-| Metric | Value | Description |
-| :--- | :--- | :--- |
-| **Total Source Records** | **36,358** | Raw entries from DA-IICT Library Accession Register |
-| **Successful Enrichments** | **33,502** | Books matched with Google Books API metadata |
-| **Success Rate** | **92.1%** | High coverage due to fuzzy title/author matching |
-| **Final Dataset Size** | **31,143** | Unique, high-quality records after deduplication |
-| **Processing Speed** | ~50 records/min | With rate-limiting and backoff strategies |
-| **Database Size** | ~14 MB | SQLite file with optimized schema |
-| **API Response Time** | **~82.5 ms** | Average latency for search queries (benchmarked) |
----
-
-## Detailed Pipeline Design
-
-### 1. Sync Layer (`sync_pipeline.py`)
-
-**Purpose:** Handle synchronization with the library’s OPAC system and manage incremental updates.
-
-**What it does:**
-
-- Crawls the Koha OPAC “New Arrivals” shelf
-- Dynamically identifies shelf IDs
-- Downloads BibTeX records where possible
-
-**Key Challenge:**
-
-- The OPAC uses **Altcha**, a proof-of-work security mechanism that blocks automated scraping
-
-**Design Decision:**
-
-- Detect security blocks gracefully
-- Fall back to existing records instead of corrupting the pipeline
-- Log warnings rather than failing hard
-
-This ensures the pipeline remains **fault-tolerant**.
-
----
-
-### 2. Ingestion Layer (`ingestion.py`)
-
-**Purpose:** Fetch rich metadata for DA-IICT books using external APIs.
-
-**Key Design Choices:**
-
-- **Asynchronous requests** using `aiohttp`
-- **Concurrency control** via `asyncio.Semaphore`
-- **Exponential backoff with jitter** to handle HTTP 429 rate limits
-- **Incremental ingestion** using JSONL logs to avoid re-fetching data
-
-**Why async?**
-
-- The CSV contains \~36,000 records
-- Synchronous API calls would be prohibitively slow and rate-limited
-
-**Output:**
-
-- Line-delimited JSON (`.jsonl`) files containing raw enriched metadata
-
----
-
-### 3. Transformation Layer (`transformation.py`)
-
-**Purpose:** Resolve real-world "dirty data" issues and prepare the dataset for storage.
-
-**Operations performed:**
-
-- Unicode normalization (handling non-standard characters)
-- Title and author normalization
-- Removal of placeholder / empty descriptions
-- Deduplication using:
-  - ISBN-13 (preferred)
-  - Google Books ID (fallback)
-
-**Conflict Resolution Strategy:**
-
-- Prefer records with valid ISBNs
-- Merge metadata instead of duplicating rows
-
-This stage converts raw API responses into a **clean, analytical dataset**.
-
----
-
-### 4. Storage Layer (`storage.py`, `db.py`)
-
-**Purpose:** Persist curated data in a structured, queryable format.
-
-**Technology:**
-
-- SQLite
-- SQLAlchemy ORM
-
-**Why SQLite?**
-
-- Lightweight and portable
-- No external database dependency
-- Ideal for coursework and reproducibility
-
-**Schema Highlights:**
-
-- `books` table
-- Indexed columns on `isbn_13` and `title`
-- Enforced schema integrity
-
----
-
-### 5. Serving Layer (`serving.py`)
-
-**Purpose:** Expose the curated dataset to downstream consumers (Phase 2: Data Scientist role).
-
-**Implemented using:**
-
-- FastAPI
-
-**Endpoints:**
-
-- `GET /books` – Paginated access to enriched books
-- `GET /books/{isbn}` – ISBN-based lookup
-- `GET /search` – Partial title/author search
-- `GET /sync` – Trigger pipeline execution without stopping the API
-
-**Design Principle:** Separation of concerns — the API does not perform ingestion logic directly; it orchestrates it.
-
----
-
-## Orchestration (`main.py`)
-
-`main.py` acts as the **control plane** of the system:
-
-Execution order:
-
-1. Run OPAC sync
-2. Identify new or updated records
-3. Trigger incremental ingestion
-4. Apply transformations
-5. Update SQLite database
-
-This ensures:
-
-- Idempotency
-- Recoverability
-- Minimal redundant computation
-
----
-
-## LLM Usage & Transparency
-
-LLMs were used as **assistive tools**, not black boxes.
-
-All interactions are logged in:
+Each folder has **one clear responsibility**, mirroring how production pipelines are organized.
 
 ```
-logs/project_log.md
+Book-Finder/
+│
+├── api/
+│   └── serving.py          # FastAPI service & DB models
+├── data/
+│   ├── raw/                # CSVs and BibTeX files
+│   ├── processed/          # Intermediate JSONL files
+├── ingestion/
+│   └── ingestion.py        # Async Google Books fetcher
+├── logs/
+│   └── project_log.md      # Technical development log
+├── analysis/
+│   └── metrics_analysis.py # Data quality reporting
+├── storage/
+│   └── storage.py          # Database loading logic
+├── Transformation/
+│   └── transformation.py   # Cleaning & Deduplication
+├── main.py                 # Pipeline Orchestrator
+├── sync_pipeline.py        # OPAC Synchronization
+└── README.md
 ```
 
-Each entry records:
-
-- Purpose of the prompt
-- Tool used
-- Summary of response
-- How the output was applied
-
-This satisfies the project’s LLM policy and ensures full transparency.
+This structure ensures:
+- Clear data lineage
+- Easy debugging
+- Independent execution of each stage
 
 ---
 
-## How to Run the Pipeline
+## 4. 🔽 Pipeline Architecture (End-to-End Flow)
 
-### 0. Install Dependencies
+The pipeline is **linear, deterministic, and restartable**.
 
-```bash
-pip install -r requirements.txt
+```
+┌──────────────────────┐
+┌──────────────────────┐
+│   Raw CSV Registers  │     │   OPAC (Koha)        │
+│  (Existing Data)     │     │   (New Arrivals)     │
+└──────────┬───────────┘     └──────────┬───────────┘
+           │                            │
+           ▼                            ▼
+┌───────────────────────────────────────────────────┐
+│ SYNC & MERGE                                      │
+│ - Crawl New Arrivals (Altcha-aware)               │
+│ - Merge with Accession Register                   │
+│ - Detect Incremental Changes                      │
+└──────────────────────────┬────────────────────────┘
+                           │
+                           ▼
+┌───────────────────────────────────────────────────┐
+│ INGESTION (Google Books)                          │
+│ - Async I/O (aiohttp)                             │
+│ - Rate Limiting & Backoff                         │
+│ - Fetch Metadata (ISBN, Desc, Thumbnails)         │
+└──────────────────────────┬────────────────────────┘
+                           │
+                           ▼
+┌───────────────────────────────────────────────────┐
+│ TRANSFORMATION                                    │
+│ - Normalize Titles/Authors                        │
+│ - Deduplicate (ISBN > Google ID > Title match)    │
+│ - Merge Metadata Conflicts                        │
+└──────────────────────────┬────────────────────────┘
+                           │
+                           ▼
+┌───────────────────────────────────────────────────┐
+│ STORAGE                                           │
+│ - JSONL → SQLite                                  │
+│ - SQLAlchemy ORM                                  │
+│ - Integrity Checks                                │
+└──────────────────────────┬────────────────────────┘
+                           │
+                           ▼
+┌───────────────────────────────────────────────────┐
+│ FASTAPI SERVICE                                   │
+│ - Browse & Paginate                               │
+│ - Search (Title/Author/ISBN)                      │
+│ - Trigger Pipeline Sync                           │
+└───────────────────────────────────────────────────┘
 ```
 
-### 1. Automated Execution (Recommended)
+---
 
-Run the full end-to-end pipeline. This handles sync, ingestion, transformation, and storage automatically.
+## 5. Running the Complete Pipeline
+
+To execute **all ETL stages in order**, run:
 
 ```bash
 python main.py
 ```
 
-### 2. Manual / Step-by-Step Execution
+You can also skip specific stages or set limits:
+```bash
+python main.py --skip-sync --ingest-limit 100
+```
 
-If you wish to run individual stages or debug specific components:
+### Final Artifact
 
-#### Step A: Synchronization
-Checks the library OPAC for new arrivals.
+```
+book_finder.db
+```
+
+This database becomes the **single source of truth** for the API.
+
+---
+
+## 6. Detailed Stage Explanations
+
+---
+
+### 6.1 Sync Stage (`sync_pipeline.py`)
+
+**Goal:**  
+Keep the local dataset aligned with the physical library's "New Arrivals".
+
+**Key Design Choices**
+- **Altcha-Awareness**: Detects anti-bot protection and degrades gracefully (warns user instead of crashing).
+- **Incremental Logic**: Checks for new IDs against existing CSV to minimize redundant processing.
+- **BibTeX Parsing**: Converts library standard format to project CSV schema.
+
+**Default Run**
 ```bash
 python sync_pipeline.py
 ```
-- **Input**: None (Connects to OPAC URL)
-- **Output**: `data/raw/current_sync.csv` (if new items found)
 
-#### Step B: Ingestion (Enrichment)
-Fetches metadata from Google Books for the input CSV.
+---
+
+### 6.2 Ingestion Stage (`ingestion.py`)
+
+**Goal:**  
+Enrich sparse CSV records with rich metadata from Google Books.
+
+**Key Design Choices**
+- **Asyncio + Aiohttp**: High-throughput fetching.
+- **Semaphore Handling**: Limits concurrency to prevent IP bans.
+- **Resumable State**: Skips already processed IDs in `output` JSONL.
+
+**Default Run**
 ```bash
-# Process a specific CSV (Standard Mode)
-python ingestion/ingestion.py --input "data/raw/Accession Register-Books.csv" --limit 100
-
-# Process all records (Warning: Takes time)
-python ingestion/ingestion.py --input "data/raw/Accession Register-Books.csv"
+python ingestion/ingestion.py --limit 100
 ```
-- **Input**: CSV file path
-- **Output**: `data/raw/books_enriched.jsonl`
 
-#### Step C: Transformation
-Cleans, normalizes, and deduplicates the enriched data.
+**Custom Input / Output**
 ```bash
-python transformation/transformation.py
+python ingestion/ingestion.py \
+  --input "data/raw/custom_list.csv" \
+  --output "data/processed/my_enrichment.jsonl"
 ```
-- **Input**: `data/raw/books_enriched.jsonl`
-- **Output**: `data/processed/books_cleaned.jsonl`
 
-#### Step D: Storage
-Loads the processed JSONL data into the SQLite database.
+---
+
+### 6.3 Transformation Stage (`transformation.py`)
+
+**Goal:**  
+Clean, normalize, and deduplicate the noisy API results.
+
+**Operations**
+- **Step 1 (Transform)**: Merges CSV metadata (Book No, Publisher) with Google Metadata.
+- **Step 2 (Dedup)**: Resolves duplicates using a hierarchy: `ISBN-13` > `Google ID` > `Title+Author`.
+
+**Why this matters:**  
+API results often return the same book for slightly different queries. This stage ensures uniqueness.
+
+**Default Run**
+```bash
+python Transformation/transformation.py
+```
+
+---
+
+### 6.4 Storage Stage (`storage.py`)
+
+**Goal:**  
+Persist final records into a structured Relational Database.
+
+**Design Choices**
+- **SQLAlchemy**: ORM-based access for future portability (e.g., to PostgreSQL).
+- **Batch Commits**: Improves write performance.
+- **Integrity Handling**: Skips duplicates at the database level if pre-checks fail.
+
+**Default Run**
 ```bash
 python storage/storage.py
 ```
-- **Input**: `data/processed/books_cleaned.jsonl`
-- **Output**: `book_finder.db`
-
-### 3. Start API Server
-
-Once the database is populated, start the API to query the data.
-
-```bash
-python api/serving.py
-```
-
-Visit API docs at: `http://127.0.0.1:8000/docs`
-
-### 4. Run Analysis
-
-To view project metrics and data statistics:
-
-```bash
-python analysis/metrics_analysis.py
-```
-Or open the notebook `analysis/project_metrics.ipynb` in Jupyter/VS Code.
 
 ---
 
-## Learning Outcomes
+## 7. FastAPI Service
 
-Through this project, we gained hands-on experience with:
+The FastAPI layer provides **read-only access** to the final dataset and **control access** to the pipeline.
 
-- Designing end-to-end data pipelines
-- Asynchronous ingestion at scale
-- API rate-limit handling
-- Schema design and relational storage
-- Serving data for ML workloads
+### Start API Server
 
-Most importantly, the project demonstrates how **engineering decisions** directly affect the usability of downstream machine learning systems.
+```bash
+python api/serving.py --reload
+```
+
+### Key Endpoints
+
+- `GET /books/` – Paginated book listing  
+- `GET /books/{isbn}` – ISBN lookup  
+- `GET /search/?q=term` – Partial match search  
+- `GET /sync/` – Trigger background pipeline run  
+
+**Swagger UI:**  
+http://127.0.0.1:8000/docs
 
 ---
 
-## Future Work (Phase 2)
+## 8. Pipeline Statistics
 
-- Generate embeddings from book descriptions
-- Implement semantic search
-- Rank results based on query relevance
-- Build a lightweight frontend
+All statistics can be reproduced using `analysis/metrics_analysis.py` or the `analysis/project_metrics.ipynb` notebook.
+
+### 8.1 Data Flow Summary
+
+| Stage | Input Records | Output Records | Success Rate |
+|------|--------------:|---------------:|-------------:|
+| **Source (CSV)** | 36,358 | - | - |
+| **Ingestion** | ~36,358 | 33,502 | **92.1%** |
+| **Transformation** | 33,502 | 26,173 | **78.1%** (Dedup) |
+| **Final DB** | 26,173 | 26,173 | **100%** |
+
+### 8.2 Enrichment Quality
+
+| Metric | Value |
+|------|------:|
+| **Total Source Records** | **36,358** |
+| **Successful Matches** | **33,502** |
+| **Final Unique Books** | **26,173** |
+| **Database Size** | **~41 MB** |
+
+**Observation**
+> The pipeline successfully enriches over 90% of the library catalog, proving the effectiveness of the fuzzy matching strategy used during ingestion.
+
+---
+
+## 9. Data Dictionary (Core Fields)
+
+| Field | Description |
+|------|------------|
+| `id` | Internal DB Primary Key |
+| `isbn_13` | 13-digit ISBN (Primary Identifier) |
+| `title` | Book Title (from Google Books) |
+| `authors` | Comma-separated list of authors |
+| `description` | Full text summary/blurb |
+| `categories` | Genre/Subject tags |
+| `thumbnail` | URL to cover image |
+| `average_rating` | Google Books rating |
+| `book_no` | Original Library Call Number |
+
+---
+
+## 10. Design Philosophy
+
+This project emphasizes:
+
+- **Separation of concerns**: Each module does one thing well.
+- **Fail-Safe Operation**: Network errors or API limits do not crash the pipeline.
+- **Reproducibility**: Everything is code-defined and scriptable.
+- **Transparency**: Extensive logging (`logs/project_log.md`) tracks all decisions.
+
+---
+
+## 11. Conclusion
+
+This project demonstrates a **complete, production-style data pipeline**:
+
+- Quantifiable data-quality improvements  
+- Deterministic ETL stages  
+- Resume-safe enrichment  
+- Persistent storage  
+- API-based data access  
+
+It bridges the gap between 'operational' library lists and 'analytical' datasets, forming a strong foundation for **Phase 2: Semantic Search**.
 
 ---
 
 ## Authors
 
-202518053 : Falak Parmar
-202518035 : Aditya Jana
+**202518053 : Falak Parmar**  
+**202518035 : Aditya Jana**  
 
----
-
-DA-IICT — Big Data Engineering Project
-
+DA-IICT — Big Data Engineering
