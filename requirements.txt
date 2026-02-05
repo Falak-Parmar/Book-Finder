@@ -1,7 +1,8 @@
 pandas
 requests
 fastapi
-uvicorn
+uvicorn[standard]
+gunicorn
 python-multipart
 aiohttp
 # optional for development

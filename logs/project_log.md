@@ -171,6 +171,26 @@ UX Blueprint:
 
 ---
 
+### 🌗 Session 9: Dual-Theme Architecture & High-Contrast Refining
+
+**USER**: "Let's try implementing UI changes... 2 themes: Light and Dark. For Light use Github Light contrast theme and for dark use Github Dark contrast theme."
+
+**ASSISTANT**: "Implementing a dual-theme system in Streamlit requires moving from hardcoded styles to a **Design System** approach. 
+1.  **Theme Mapping**: I'll define two distinct color palettes in a `themes` dictionary, using exact hex codes from GitHub's **Primer Design System** (e.g., `#010409` for Dark High Contrast and `#ffffff` for Light High Contrast).
+2.  **Reactive Styling**: By storing the selection in `st.session_state`, the app will dynamically inject a CSS `<style>` block that populates CSS variables (`--bg-color`, `--primary-color`, etc.) on every re-run.
+3.  **Contrast-Aware Components**: Buttons and category tags need specific logic—in Light mode, borders must be darker, while in Dark mode, they need to glow subtly to remain visible."
+
+**USER**: "The Dark theme is broken. There are white blocks spilling in at the top... Resolve these UI elements."
+
+**ASSISTANT**: "This is a classic 'Z-index and Layout' clash. Streamlit's default components like `stHeader` and `stToolbar` have pre-defined backgrounds that don't respect the custom `stApp` background.
+
+**The Fix**:
+-   **Header/Toolbar Injection**: I'll explicitly target `header[data-testid="stHeader"]` and `[data-testid="stToolbar"]` to force them to match the theme's background.
+-   **Input Field Direct Targeting**: Streamlit's input fields often ignore global color inheritance. I'll use targeted selectors like `.stTextInput input` to force high-contrast borders and text.
+-   **Decoration Removal**: I'll hide the `[data-testid="stDecoration"]` (the rainbow line at the top) to achieve a more 'Enterprise' high-contrast aesthetic.
+
+---
+
 ### �📈 Current Project Metrics
 -   **Total Records Processed**: 27,913
 -   **Total Records Indexed**: 27,913
@@ -181,10 +201,46 @@ UX Blueprint:
 ---
 
 ### 🏁 Final State
-The Book-Finder project is now a production-ready, full-stack search ecosystem. Over eight sessions, it has evolved from a raw CSV file into a sophisticated platform featuring:
+The Book-Finder project is now a production-ready, full-stack search ecosystem. Over nine sessions, it has evolved from a raw CSV file into a sophisticated platform featuring:
 -   **High-Volume Ingestion**: Altcha-aware, asynchronous enrichment via Google Books.
 -   **Robust Storage**: SQLAlchemy-backed SQLite with automated deduplication.
 -   **Vector Search**: Sentence-transformers + ChromaDB for meaning-based discovery.
--   **Premium UI**: A paginated, high-contrast Streamlit dashboard with search history integration and modal-based deep dives.
+-   **Dual-Theme Premium UI**: A paginated, high-contrast Streamlit dashboard supporting both **GitHub Light Contrast** and **GitHub Dark Contrast** modes with history integration and modal-based deep dives.
 
 It stands as a testament to the intersection of Big Data Engineering and Modern UX Design.
+
+---
+
+### 🌐 Session 10: Production Deployment & Split Architecture
+
+**USER**: "Now we need to deploy the recommender system. Deploy FastAPI on Render and Streamlit on cloud."
+
+**ASSISTANT**: "This is a sophisticated 'Split Architecture' deployment. We are moving from a monolithic local setup to a distributed cloud system.
+
+**Deployment Blueprint**:
+1.  **Backend (Render)**: We'll containerize the FastAPI application using a production-grade stack: **Gunicorn** acting as the process supervisor and **Uvicorn** as the high-speed async worker.
+2.  **Model Pre-caching**: To avoid 'Cold Starts' and network latency, I've created `scripts/download_model.py`. This script runs during the Docker build process, baking the 400MB+ ML model directly into the image layer.
+3.  **Frontend (Cloud Hybrid)**: I've refactored `app.py` to be 'Deployment Aware'. By checking for an `API_URL` environment variable, the app can seamlessly switch between querying a local SQLite database (for development) and fetching results from the Render API (for production).
+4.  **CORS & Connectivity**: The FastAPI backend is configured with permissive CORS to allow the hosted Streamlit frontend to make cross-origin requests securely.
+
+This setup ensures that the heavy ML lifting and data storage happen on a dedicated server (Render), while the user interface remains lightweight and accessible from anywhere (Streamlit Cloud)."
+
+---
+
+### 📈 Current Project Metrics
+- **Total Records Processed**: 27,913
+- **Total Records Indexed**: 27,913
+- **Deployment Architecture**: Split (Render Backend + Streamlit Cloud Frontend)
+- **Model Loading**: Pre-cached in Docker layers
+- **Average Semantic Latency**: <50ms (cached embedding lookup)
+- **Branding Modernization**: Transitioned to DAU 2026 guidelines
+
+---
+
+### 🏁 Final State
+The Book-Finder project is now a production-ready, full-stack search ecosystem. Over ten sessions, it has evolved from a raw CSV file into a sophisticated platform featuring:
+- **High-Volume Ingestion**: Altcha-aware, asynchronous enrichment via Google Books.
+- **Robust Storage**: SQLAlchemy-backed SQLite with automated deduplication.
+- **Vector Search**: Sentence-transformers + ChromaDB for meaning-based discovery.
+- **Dual-Theme Premium UI**: A paginated, high-contrast Streamlit dashboard with history integration.
+- **Production-Ready Deployment**: A split-cloud architecture with Gunicorn/Uvicorn, Model Pre-caching, and Remote API support.
