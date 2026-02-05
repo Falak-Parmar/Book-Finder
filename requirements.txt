@@ -15,6 +15,6 @@ httpx
 sentence-transformers
 chromadb
 tf-keras
-streamlit
+streamlit>=1.40.0
 protobuf==3.20.3
 altair==4.2.2
