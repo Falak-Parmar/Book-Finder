@@ -5,6 +5,10 @@ import sys
 import html
 from sqlalchemy.orm import Session
 
+# Force offline mode for transformers/huggingface to avoid timeouts
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+os.environ["HF_HUB_OFFLINE"] = "1"
+
 # Add project root to sys.path
 sys.path.append(os.getcwd())
 
@@ -162,6 +166,10 @@ DISTANCE_THRESHOLD = 0.7  # Lower distance means higher similarity
 def get_embedding_manager():
     return EmbeddingManager()
 
+@st.cache_data(show_spinner=False)
+def _get_db_session():
+    return db.SessionLocal()
+
 def get_db():
     return db.SessionLocal()
 
@@ -189,18 +197,24 @@ def show_book_details(book):
         st.markdown("#### Description")
         st.write(description)
 
-def perform_semantic_search(query, manager, session, n_results=300, threshold=DISTANCE_THRESHOLD):
+@st.cache_data(show_spinner=False)
+def perform_semantic_search_cached(query, n_results=300, threshold=DISTANCE_THRESHOLD):
+    manager = get_embedding_manager()
+    session = get_db()
+    
     results = manager.search(query, n_results=n_results)
     ids = results.get("ids", [[]])[0]
     distances = results.get("distances", [[]])[0]
     
     if not ids:
+        session.close()
         return []
         
     # Filter by threshold
     filtered_ids = [idx for idx, dist in zip(ids, distances) if dist <= threshold]
     
     if not filtered_ids:
+        session.close()
         return []
         
     books = session.query(db.Book).filter(
@@ -213,9 +227,15 @@ def perform_semantic_search(query, manager, session, n_results=300, threshold=DI
     # Sort by relevance (Chromadb order)
     id_to_index = {idx: i for i, idx in enumerate(filtered_ids)}
     books.sort(key=lambda b: id_to_index.get(b.isbn_13) if b.isbn_13 in id_to_index else id_to_index.get(b.google_id, 999))
+    
+    # Detach from session to allow serializing for cache
+    session.expunge_all()
+    session.close()
     return books
 
-def perform_keyword_search(query, session):
+@st.cache_data(show_spinner=False)
+def perform_keyword_search_cached(query):
+    session = get_db()
     search_term = f"%{query}%"
     query_obj = session.query(db.Book).filter(
         or_(
@@ -224,8 +244,20 @@ def perform_keyword_search(query, session):
             db.Book.isbn_13 == query
         )
     )
-    total = query_obj.count()
-    return query_obj.all(), total
+    results = query_obj.all()
+    total = len(results)
+    
+    # Detach from session
+    session.expunge_all()
+    session.close()
+    return results, total
+
+def perform_semantic_search(query, manager, session, n_results=300, threshold=DISTANCE_THRESHOLD):
+    # Keep original for internal calls if needed, but UI uses cached version
+    return perform_semantic_search_cached(query, n_results, threshold)
+
+def perform_keyword_search(query, session):
+    return perform_keyword_search_cached(query)
 
 # --- Session State ---
 if 'history' not in st.session_state:
@@ -246,7 +278,20 @@ st.markdown('<div class="sub-header">Discover your next read through meaning, no
 
 # Sidebar
 with st.sidebar:
-    st.image("https://www.daiict.ac.in/sites/default/files/inline-images/Dhirubhai-Ambani-University-new-logo.jpg", use_container_width=True)
+    st.image("https://www.daiict.ac.in/sites/default/files/inline-images/Dhirubhai-Ambani-University-new-logo.jpg", width=250)
+    
+    st.divider()
+    st.markdown("### Search Settings")
+    search_mode = st.radio(
+        "Search Mode",
+        ["Semantic Search 🧠", "Keyword Search 🔍"],
+        help="Semantic search finds meaning; Keyword search looks for exact text matches."
+    )
+    
+    if "Semantic" in search_mode:
+        st.info("💡 Semantic search is best for themes, topics, and descriptions.")
+    else:
+        st.info("💡 Keyword search is best for specific titles, authors, or ISBNs.")
 
 # Main Search Area
 query_input = st.text_input(
@@ -289,15 +334,16 @@ if final_query:
         # For Semantic Search, we fetch a large pool and paginate locally
         # For Keyword Search, we fetch all and paginate locally (given the DB is small enough)
         # In a real app, we'd use offset/limit on the DB.
-        if "active_query_results" not in st.session_state or st.session_state.last_final_query != final_query:
-            if "Semantic" in "Semantic Search 🧠":
-                results = perform_semantic_search(final_query, manager, session)
+        if "active_query_results" not in st.session_state or st.session_state.last_final_query != final_query or st.session_state.get('last_search_mode') != search_mode:
+            if "Semantic" in search_mode:
+                results = perform_semantic_search_cached(final_query)
                 total = len(results)
             else:
-                results, total = perform_keyword_search(final_query, session)
+                results, total = perform_keyword_search_cached(final_query)
             
             st.session_state.active_query_results = results
             st.session_state.total_results = total
+            st.session_state.last_search_mode = search_mode
     
     results = st.session_state.active_query_results
     total = st.session_state.total_results
