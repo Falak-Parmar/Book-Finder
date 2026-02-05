@@ -23,7 +23,8 @@ COPY . .
 
 # Pre-download the model and run indexing
 # This ensures the model is cached and vectors are generated in the image layer
-RUN python scripts/download_model.py && python ml/index_books.py
+# We limit to 1000 books for the initial build to avoid Render free-tier timeouts.
+RUN python scripts/download_model.py && python ml/index_books.py --limit 1000
 
 # Expose port (Render sets $PORT env var)
 EXPOSE 8000
