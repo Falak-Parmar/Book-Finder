@@ -8,6 +8,13 @@ from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 import os
 import sys
+import threading
+import time
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Add project root to sys.path
 sys.path.append(os.getcwd())
@@ -58,7 +65,88 @@ class BookResponse(BookBase):
 # Initialize DB (creates tables if they don't exist)
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Book Finder API")
+# --- Background Indexer ---
+def background_lazy_indexer():
+    """
+    Background task that slowly indexes books into ChromaDB.
+    """
+    logger.info("Background Lazy Indexer thread started.")
+    # Wait a bit for the server to fully start
+    time.sleep(10)
+    
+    from ml.index_books import prepare_book_text
+    
+    while True:
+        try:
+            if not embedding_manager:
+                logger.warning("Embedding Manager not initialized. Lazy Indexer waiting...")
+                time.sleep(60)
+                continue
+
+            session = SessionLocal()
+            try:
+                # 1. Get total count in ChromaDB
+                collection_count = embedding_manager.collection.count()
+                
+                # 2. Get total count in SQLite
+                sqlite_count = session.query(Book).count()
+                
+                if collection_count >= sqlite_count:
+                    logger.info(f"Indexing complete ({collection_count}/{sqlite_count}). Thread exiting.")
+                    break
+
+                logger.info(f"Indexing progress: {collection_count}/{sqlite_count} books in vector store.")
+                
+                # 3. Find missing books
+                # To be efficient, we'll fetch a batch of books and check if they are in Chroma
+                # Since we have 27k books, we'll fetch them in chunks
+                batch_limit = 50
+                books = session.query(Book).offset(collection_count).limit(batch_limit).all()
+                
+                if not books:
+                    break
+                
+                ids = []
+                texts = []
+                metadatas = []
+                
+                for book in books:
+                    doc_id = book.isbn_13 or book.google_id or str(book.id)
+                    text = prepare_book_text(book)
+                    meta = {
+                        "book_id": book.id,
+                        "title": book.title or "",
+                        "isbn_13": book.isbn_13 or ""
+                    }
+                    ids.append(doc_id)
+                    texts.append(text)
+                    metadatas.append(meta)
+                
+                # 4. Add to index
+                embedding_manager.add_to_index(ids, texts, metadatas)
+                logger.info(f"Indexed batch of {len(ids)} books.")
+                
+            finally:
+                session.close()
+                
+            # Sleep for 1 minute between batches to stay under Render CPU/RAM limits
+            time.sleep(60)
+            
+        except Exception as e:
+            logger.error(f"Error in Lazy Indexer: {e}")
+            time.sleep(60)
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start the lazy indexer in a background thread
+    indexer_thread = threading.Thread(target=background_lazy_indexer, daemon=True)
+    indexer_thread.start()
+    yield
+    # Cleanup code (if any) could go here
+
+app = FastAPI(title="Book Finder API", lifespan=lifespan)
 
 # Initialize Embedding Manager
 try:
