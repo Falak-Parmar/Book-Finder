@@ -24,136 +24,211 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Premium UI Theme
-st.markdown("""
-<style>
-    :root {
-        --primary-color: #6366f1;
-        --secondary-color: #818cf8;
-        --bg-color: #0f172a;
-        --text-color: #f8fafc;
-        --card-bg: rgba(30, 41, 59, 0.7);
+# --- Theme Configuration ---
+if 'theme_choice' not in st.session_state:
+    st.session_state.theme_choice = "Dark High Contrast"
+
+themes = {
+    "Light High Contrast": {
+        "bg_color": "#ffffff",
+        "text_color": "#0e1116",
+        "primary_color": "#0969da",
+        "secondary_color": "#0550ae",
+        "card_bg": "#ffffff",
+        "border_color": "#1b1f24",
+        "muted_text": "#4b535d",
+        "tag_bg": "rgba(9, 105, 218, 0.1)",
+        "tag_text": "#0969da",
+        "header_gradient": "linear-gradient(90deg, #0969da, #1f2328)"
+    },
+    "Dark High Contrast": {
+        "bg_color": "#010409",
+        "text_color": "#ffffff",
+        "primary_color": "#4493f8",
+        "secondary_color": "#1f6feb",
+        "card_bg": "#0d1117",
+        "border_color": "#30363d",
+        "muted_text": "#8b949e",
+        "tag_bg": "rgba(68, 147, 248, 0.1)",
+        "tag_text": "#4493f8",
+        "header_gradient": "linear-gradient(90deg, #4493f8, #ffffff)"
     }
+}
+
+t = themes[st.session_state.theme_choice]
+
+st.markdown(f"""
+<style>
+    :root {{
+        --primary-color: {t['primary_color']};
+        --secondary-color: {t['secondary_color']};
+        --bg-color: {t['bg_color']};
+        --text-color: {t['text_color']};
+        --card-bg: {t['card_bg']};
+        --border-color: {t['border_color']};
+        --muted-text: {t['muted_text']};
+        --tag-bg: {t['tag_bg']};
+        --tag-text: {t['tag_text']};
+    }}
     
-    .stApp {
+    .stApp {{
         background-color: var(--bg-color);
         color: var(--text-color);
-    }
+    }}
+
+    /* Fix for white header spill and toolbar */
+    header[data-testid="stHeader"], [data-testid="stToolbar"] {{
+        background-color: var(--bg-color) !important;
+        background: var(--bg-color) !important;
+    }}
+
+    /* Remove the colorful line at the top */
+    [data-testid="stDecoration"] {{
+        display: none;
+    }}
+
+    /* Global input styling */
+    .stTextInput input, .stSelectbox [data-baseweb="select"], .stSelectbox [role="button"] {{
+        background-color: var(--card-bg) !important;
+        color: var(--text-color) !important;
+        border: 1px solid var(--border-color) !important;
+    }}
     
-    .main-header {
+    /* Ensure markdown lists and text use the text-color variable */
+    .stMarkdown, .stMarkdown p, .stMarkdown li {{
+        color: var(--text-color) !important;
+    }}
+    
+    .main-header {{
         font-size: 3rem;
         font-weight: 800;
-        background: linear-gradient(90deg, #6366f1, #a855f7);
+        background: {t['header_gradient']};
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin-bottom: 2rem;
+        margin-bottom: 0.5rem;
         text-align: center;
-    }
+    }}
     
-    .sub-header {
+    .sub-header {{
         font-size: 1.2rem;
-        color: #94a3b8;
+        color: var(--muted-text);
         text-align: center;
         margin-bottom: 3rem;
-    }
+    }}
     
-    .book-card {
+    .book-card {{
         background: var(--card-bg);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
         padding: 1.5rem;
         margin-bottom: 1.5rem;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
         display: flex;
         gap: 1.5rem;
-        backdrop-filter: blur(8px);
-    }
+    }}
     
-    .book-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+    .book-card:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         border-color: var(--primary-color);
-    }
+    }}
     
-    .book-thumbnail {
+    .book-thumbnail {{
         width: 120px;
         height: 180px;
-        border-radius: 8px;
+        border-radius: 4px;
         object-fit: cover;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    }
+        border: 1px solid var(--border-color);
+    }}
     
-    .book-info {
+    .book-info {{
         flex: 1;
-    }
+    }}
     
-    .book-title {
+    .book-title {{
         font-size: 1.4rem;
         font-weight: 700;
-        color: #f1f5f9;
+        color: var(--text-color);
         margin-bottom: 0.25rem;
-    }
+    }}
     
-    .book-subtitle {
+    .book-subtitle {{
         font-size: 1rem;
-        color: #94a3b8;
+        color: var(--muted-text);
         margin-bottom: 1rem;
-    }
+    }}
     
-    .book-author {
+    .book-author {{
         font-size: 0.95rem;
-        font-style: italic;
-        color: #818cf8;
+        color: var(--primary-color);
         margin-bottom: 1rem;
-    }
+    }}
     
-    .book-description {
+    .book-description {{
         font-size: 0.9rem;
         line-height: 1.5;
-        color: #cbd5e1;
+        color: var(--text-color);
         display: -webkit-box;
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
         overflow: hidden;
-    }
+        opacity: 0.9;
+    }}
     
-    .category-tag {
+    .category-tag {{
         display: inline-block;
-        background: rgba(99, 102, 241, 0.1);
-        color: #818cf8;
+        background: var(--tag-bg);
+        color: var(--tag-text);
         padding: 0.2rem 0.6rem;
         border-radius: 9999px;
         font-size: 0.75rem;
         font-weight: 600;
         margin-top: 1rem;
-    }
+        border: 1px solid var(--tag-bg);
+    }}
 
     /* Button Styling Overrides */
-    div.stButton > button {
+    div.stButton > button {{
         background-color: var(--primary-color) !important;
         color: white !important;
-        border: none !important;
-        transition: all 0.3s ease !important;
-        border-radius: 8px !important;
-    }
+        border: 1px solid var(--border-color) !important;
+        transition: all 0.2s ease !important;
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+    }}
 
-    div.stButton > button:hover {
+    div.stButton > button:hover {{
         background-color: var(--secondary-color) !important;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    }
+        border-color: var(--primary-color) !important;
+    }}
 
     /* History chips specific styling */
-    [data-testid="stHorizontalBlock"] div.stButton > button {
+    [data-testid="stHorizontalBlock"] div.stButton > button {{
         font-size: 0.8rem;
         padding: 0.2rem 0.5rem;
-        background-color: rgba(99, 102, 241, 0.2) !important;
-        border: 1px solid rgba(99, 102, 241, 0.5) !important;
-    }
+        background-color: var(--card-bg) !important;
+        color: var(--text-color) !important;
+        border: 1px solid var(--border-color) !important;
+    }}
 
-    [data-testid="stHorizontalBlock"] div.stButton > button:hover {
-        background-color: var(--primary-color) !important;
-    }
+    [data-testid="stHorizontalBlock"] div.stButton > button:hover {{
+        background-color: var(--tag-bg) !important;
+        color: var(--tag-text) !important;
+        border-color: var(--primary-color) !important;
+    }}
+
+    /* Muted search info */
+    .search-info {{
+        color: var(--muted-text);
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+    }}
+
+    /* Sidebar adjustments */
+    section[data-testid="stSidebar"] {{
+        background-color: var(--card-bg);
+        border-right: 1px solid var(--border-color);
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -281,6 +356,17 @@ with st.sidebar:
     st.image("https://www.daiict.ac.in/sites/default/files/inline-images/Dhirubhai-Ambani-University-new-logo.jpg", width=250)
     
     st.divider()
+    st.markdown("### Appearance")
+    theme_choice = st.selectbox(
+        "Theme",
+        options=list(themes.keys()),
+        index=list(themes.keys()).index(st.session_state.theme_choice)
+    )
+    if theme_choice != st.session_state.theme_choice:
+        st.session_state.theme_choice = theme_choice
+        st.rerun()
+
+    st.divider()
     st.markdown("### Search Settings")
     search_mode = st.radio(
         "Search Mode",
@@ -356,7 +442,7 @@ if final_query:
         end_idx = min(start_idx + PAGE_SIZE, total)
         page_results = results[start_idx:end_idx]
         
-        st.info(f"Showing {start_idx + 1} to {end_idx} of {total} results for '{final_query}'")
+        st.markdown(f'<div class="search-info">Showing {start_idx + 1} to {end_idx} of {total} results for \'{final_query}\'</div>', unsafe_allow_html=True)
         
         for i, book in enumerate(page_results):
             title = html.escape(book.title) if book.title else "Untitled"
