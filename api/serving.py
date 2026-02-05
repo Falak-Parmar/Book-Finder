@@ -1,44 +1,24 @@
+import argparse
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, Integer, String, Text, or_
-from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 import os
+import sys
 
-# --- Database Setup ---
-# Assuming the server is run from the project root
-SQLALCHEMY_DATABASE_URL = "sqlite:///./data/books.db"
+# Add current directory to sys.path to ensure we can import storage
+# This handles cases where scripts are run from different contexts
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
 
-# connect_args={"check_same_thread": False} is needed only for SQLite
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
-
-class Book(Base):
-    __tablename__ = "books"
-
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String)
-    subtitle = Column(String, nullable=True)
-    authors = Column(String)  # Stored as comma-separated string
-    isbn_13 = Column(String, unique=True, index=True)
-    isbn_10 = Column(String, nullable=True)
-    categories = Column(String, nullable=True)
-    description = Column(Text, nullable=True)
-    thumbnail = Column(String, nullable=True)
-    published_date = Column(String, nullable=True)
-    page_count = Column(Integer, nullable=True)
-    google_id = Column(String, unique=True, index=True)
-    preview_link = Column(String, nullable=True)
-    
-    # Merged CSV Columns
-    edition_volume = Column(String, nullable=True)
-    publisher_info = Column(String, nullable=True)
-    book_no = Column(String, nullable=True)
+# Import from storage.db
+from storage.db import Book, SessionLocal, engine, Base
 
 def get_db():
     db = SessionLocal()
@@ -151,5 +131,12 @@ def sync_data():
 
 if __name__ == "__main__":
     import uvicorn
+    parser = argparse.ArgumentParser(description="Run Book Finder API")
+    parser.add_argument("--host", default="127.0.0.1", help="Host to bind to")
+    parser.add_argument("--port", type=int, default=8000, help="Port to bind to")
+    parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
+    
+    args = parser.parse_args()
+    
     # Use 127.0.0.1 for local dev to avoid some binding issues
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run("serving:app", host=args.host, port=args.port, reload=args.reload)

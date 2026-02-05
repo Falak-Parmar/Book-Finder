@@ -1,20 +1,22 @@
+import argparse
 import csv
 import json
 import os
 import datetime
 
 # --- Configuration ---
-INPUT_JSON_ENRICHED = r"data/processed/books_enriched.jsonl" # Output from ingestion
-INPUT_CSV = r"data/raw/Accession Register-Books.csv"
-OUTPUT_TRANSFORMED = r"data/processed/Google_cleaned.jsonl"
-OUTPUT_DEDUPED = r"data/processed/google_deduped.jsonl"
+# Defaults
+DEFAULT_INPUT_JSON = r"data/processed/books_enriched.jsonl"
+DEFAULT_INPUT_CSV = r"data/raw/Accession Register-Books.csv"
+DEFAULT_OUTPUT_TRANSFORMED = r"data/processed/Google_cleaned.jsonl"
+DEFAULT_OUTPUT_DEDUPED = r"data/processed/google_deduped.jsonl"
 LOG_FILE = r"logs/project_log.md"
 
-def load_csv_metadata():
-    print(f"Loading metadata from {INPUT_CSV}...")
+def load_csv_metadata(input_csv):
+    print(f"Loading metadata from {input_csv}...")
     metadata_map = {}
     try:
-        with open(INPUT_CSV, 'r', encoding='utf-8') as f:
+        with open(input_csv, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 acc_no = row.get("Acc. No.", "").strip()
@@ -28,21 +30,21 @@ def load_csv_metadata():
         print(f"Error reading CSV: {e}")
     return metadata_map
 
-def transform_step():
+def transform_step(input_json, input_csv, output_transformed):
     print("\n--- Step 1: Transforming & Merging ---")
-    if not os.path.exists(INPUT_JSON_ENRICHED):
-        print(f"Error: Input file {INPUT_JSON_ENRICHED} not found.")
+    if not os.path.exists(input_json):
+        print(f"Error: Input file {input_json} not found.")
         return False
 
-    csv_metadata = load_csv_metadata()
-    print(f"Reading from {INPUT_JSON_ENRICHED}...")
+    csv_metadata = load_csv_metadata(input_csv)
+    print(f"Reading from {input_json}...")
     
     total_records = 0
     kept_records = 0
     removed_no_isbn = 0 # Actually just 'no google data' now
     
-    with open(INPUT_JSON_ENRICHED, 'r', encoding='utf-8') as infile, \
-         open(OUTPUT_TRANSFORMED, 'w', encoding='utf-8') as outfile:
+    with open(input_json, 'r', encoding='utf-8') as infile, \
+         open(output_transformed, 'w', encoding='utf-8') as outfile:
         
         for line in infile:
             try:
@@ -96,10 +98,10 @@ def transform_step():
     print(f"Kept: {kept_records}")
     return True
 
-def dedup_step():
+def dedup_step(input_file, output_file):
     print("\n--- Step 2: Deduplication ---")
-    if not os.path.exists(OUTPUT_TRANSFORMED):
-        print(f"Error: {OUTPUT_TRANSFORMED} not found.")
+    if not os.path.exists(input_file):
+        print(f"Error: {input_file} not found.")
         return
 
     total_records = 0
@@ -108,8 +110,8 @@ def dedup_step():
     seen_google_ids = set()
     seen_isbns = set()
     
-    with open(OUTPUT_TRANSFORMED, 'r', encoding='utf-8') as infile, \
-         open(OUTPUT_DEDUPED, 'w', encoding='utf-8') as outfile:
+    with open(input_file, 'r', encoding='utf-8') as infile, \
+         open(output_file, 'w', encoding='utf-8') as outfile:
         
         for line in infile:
             try:
@@ -144,8 +146,16 @@ def dedup_step():
     print(f"Final Count (google_deduped.jsonl): {kept_records}")
 
 def main():
-    if transform_step():
-        dedup_step()
+    parser = argparse.ArgumentParser(description="Transform and Deduplicate Book Data")
+    parser.add_argument("--input", default=DEFAULT_INPUT_JSON, help="Input enriched JSONL file")
+    parser.add_argument("--csv-input", default=DEFAULT_INPUT_CSV, help="Input CSV file for metadata")
+    parser.add_argument("--output", default=DEFAULT_OUTPUT_TRANSFORMED, help="Intermediate transformed output file")
+    parser.add_argument("--dedup-output", default=DEFAULT_OUTPUT_DEDUPED, help="Final deduplicated output file")
+    
+    args = parser.parse_args()
+
+    if transform_step(args.input, args.csv_input, args.output):
+        dedup_step(args.output, args.dedup_output)
     print("\nTransformation Pipeline Complete.")
 
 if __name__ == "__main__":

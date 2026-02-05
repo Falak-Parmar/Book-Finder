@@ -1,3 +1,4 @@
+import argparse
 import subprocess
 import sys
 import os
@@ -44,38 +45,54 @@ def run_step(command, step_name):
         return False
 
 def main():
+    parser = argparse.ArgumentParser(description="Book Finder Pipeline Orchestrator")
+    parser.add_argument("--skip-sync", action="store_true", help="Skip the sync step")
+    parser.add_argument("--skip-ingestion", action="store_true", help="Skip the ingestion step")
+    parser.add_argument("--skip-transform", action="store_true", help="Skip the data transformation step")
+    parser.add_argument("--skip-storage", action="store_true", help="Skip the database storage step")
+    parser.add_argument("--ingest-limit", type=int, default=50, help="Limit number of books to ingest")
+    
+    args = parser.parse_args()
+
     logger.info("Starting Pipeline Orchestration...")
     
-    # 1. Sync Step
-    sync_cmd = f"{sys.executable} sync_pipeline.py"
-    logger.info("Step 1: Synchronizing with OPAC...")
-    
-    # Run sync manually to check exit code
-    import subprocess as sp
-    sync_process = sp.run(sync_cmd, shell=True, cwd=os.getcwd())
-    sync_code = sync_process.returncode
-    
     ingestion_input = "data/raw/Accession Register-Books.csv"
-    skip_rest = False
     
-    if sync_code == 2:
-        logger.info("New items found! Switching to incremental ingestion mode.")
-        ingestion_input = "data/raw/current_sync.csv"
-    elif sync_code == 0:
-        logger.info("No new items found. Pipeline will skip enrichment to avoid processing backlog.")
-        # We can still run transformation and storage if the user wants, 
-        # but usually sync trigger implies "sync new".
-        # For now, I'll limit the backlog check to 10 items if no sync happened.
-        logger.info("Checking if any pending records in main backlog (limited to 5 for speed)...")
+    # 1. Sync Step
+    if not args.skip_sync:
+        sync_cmd = f"{sys.executable} sync_pipeline.py"
+        logger.info("Step 1: Synchronizing with OPAC...")
+        
+        # Run sync manually to check exit code
+        import subprocess as sp
+        sync_process = sp.run(sync_cmd, shell=True, cwd=os.getcwd())
+        sync_code = sync_process.returncode
+        
+        if sync_code == 2:
+            logger.info("New items found! Switching to incremental ingestion mode.")
+            ingestion_input = "data/raw/current_sync.csv"
+        elif sync_code == 0:
+            logger.info("No new items found. Pipeline will skip enrichment to avoid processing backlog.")
+            # We can still run transformation and storage if the user wants, 
+            # but usually sync trigger implies "sync new".
+            # For now, I'll limit the backlog check to 10 items if no sync happened.
+            logger.info("Checking if any pending records in main backlog (limited to 5 for speed)...")
+        else:
+            logger.error("Sync failed. Check logs for details.")
+            sys.exit(1)
     else:
-        logger.error("Sync failed. Check logs for details.")
-        sys.exit(1)
+        logger.info("Skipping Sync Step.")
 
-    steps = [
-        (f"{sys.executable} ingestion/ingestion.py --input '{ingestion_input}' --limit 50", "Google Books Ingestion"),
-        (f"{sys.executable} transformation/transformation.py", "Data Transformation"),
-        (f"{sys.executable} storage/storage.py", "Database Storage")
-    ]
+    steps = []
+    
+    if not args.skip_ingestion:
+        steps.append((f"{sys.executable} ingestion/ingestion.py --input '{ingestion_input}' --limit {args.ingest_limit}", "Google Books Ingestion"))
+    
+    if not args.skip_transform:
+        steps.append((f"{sys.executable} Transformation/transformation.py", "Data Transformation"))
+        
+    if not args.skip_storage:
+        steps.append((f"{sys.executable} storage/storage.py", "Database Storage"))
     
     for cmd, name in steps:
         if not run_step(cmd, name):

@@ -1,3 +1,4 @@
+import argparse
 import requests
 import os
 import pandas as pd
@@ -11,12 +12,12 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Constants
+# Constants (Defaults)
 OPAC_LIST_URL = "https://opac.daiict.ac.in/cgi-bin/koha/opac-shelves.pl?op=list&public=1"
 DOWNLOAD_URL_TEMPLATE = "https://opac.daiict.ac.in/cgi-bin/koha/opac-downloadshelf.pl?shelfnumber={}&format=bibtex"
 DEFAULT_SHELF_ID = "393"
-DATA_DIR = "data/raw/new_arrivals"
-CSV_PATH = "data/raw/Accession Register-Books.csv"
-NEW_ARRIVALS_FILE = os.path.join(DATA_DIR, "new_arrivals.bib")
+DEFAULT_DATA_DIR = "data/raw/new_arrivals"
+DEFAULT_CSV_PATH = "data/raw/Accession Register-Books.csv"
 
 def get_shelf_id() -> str:
     """
@@ -50,7 +51,7 @@ def get_shelf_id() -> str:
         logger.error(f"Error crawling for shelf ID: {e}. Using default ID.")
         return DEFAULT_SHELF_ID
 
-def download_bibtex(shelf_id: str) -> Optional[str]:
+def download_bibtex(shelf_id: str, data_dir: str) -> Optional[str]:
     """
     Downloads the BibTeX file for the given shelf ID.
     Checks if the response is actually a BibTeX file and not a security check page.
@@ -75,20 +76,21 @@ def download_bibtex(shelf_id: str) -> Optional[str]:
             logger.warning("Please visit the OPAC in your browser to clear the check if this persists.")
             return None
 
-        if not os.path.exists(DATA_DIR):
-            os.makedirs(DATA_DIR)
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
             
-        with open(NEW_ARRIVALS_FILE, "wb") as f:
+        output_file = os.path.join(data_dir, "new_arrivals.bib")
+        with open(output_file, "wb") as f:
             f.write(response.content)
             
-        logger.info(f"Downloaded BibTeX to {NEW_ARRIVALS_FILE}")
-        return NEW_ARRIVALS_FILE
+        logger.info(f"Downloaded BibTeX to {output_file}")
+        return output_file
         
     except Exception as e:
         logger.error(f"Error downloading BibTeX: {e}")
         return None
 
-def parse_and_append(bib_file: str) -> int:
+def parse_and_append(bib_file: str, csv_path: str) -> int:
     """
     Parses the BibTeX file and appends new entries to the CSV.
     Returns the number of new records added.
@@ -106,9 +108,9 @@ def parse_and_append(bib_file: str) -> int:
         return 0
 
     # Load existing CSV to check for duplicates
-    if os.path.exists(CSV_PATH):
+    if os.path.exists(csv_path):
         try:
-            df_existing = pd.read_csv(CSV_PATH)
+            df_existing = pd.read_csv(csv_path)
             # Ensure Acc. No. is string for comparison
             existing_acc_nos = set(df_existing['Acc. No.'].astype(str).tolist())
         except Exception as e:
@@ -146,12 +148,12 @@ def parse_and_append(bib_file: str) -> int:
         
         # Append to main CSV
         output_mode = 'a'
-        header = not os.path.exists(CSV_PATH)
-        df_final.to_csv(CSV_PATH, mode=output_mode, header=header, index=False)
-        logger.info(f"Appended {len(new_rows)} new records to {CSV_PATH}.")
+        header = not os.path.exists(csv_path)
+        df_final.to_csv(csv_path, mode=output_mode, header=header, index=False)
+        logger.info(f"Appended {len(new_rows)} new records to {csv_path}.")
 
         # Save to temporary "sync" file for incremental enrichment
-        sync_csv = os.path.join(os.path.dirname(CSV_PATH), "current_sync.csv")
+        sync_csv = os.path.join(os.path.dirname(csv_path), "current_sync.csv")
         df_final.to_csv(sync_csv, index=False)
         logger.info(f"Saved {len(new_rows)} records to {sync_csv} for incremental processing.")
         
@@ -160,26 +162,38 @@ def parse_and_append(bib_file: str) -> int:
         logger.info("No new records found to append.")
         return 0
 
-def run_sync():
+def run_sync(shelf_id=None, data_dir=DEFAULT_DATA_DIR, csv_path=DEFAULT_CSV_PATH):
     """Main function to run the sync pipeline."""
-    shelf_id = get_shelf_id()
-    bib_file = download_bibtex(shelf_id)
+    if not shelf_id:
+        shelf_id = get_shelf_id()
+    
+    bib_file = download_bibtex(shelf_id, data_dir)
     
     # Even if download fails, check if the file exists (maybe manually added)
-    if not bib_file and os.path.exists(NEW_ARRIVALS_FILE):
-        logger.info(f"Using existing BibTeX file: {NEW_ARRIVALS_FILE}")
-        bib_file = NEW_ARRIVALS_FILE
+    expected_bib_file = os.path.join(data_dir, "new_arrivals.bib")
+    if not bib_file and os.path.exists(expected_bib_file):
+        logger.info(f"Using existing BibTeX file: {expected_bib_file}")
+        bib_file = expected_bib_file
 
     if bib_file:
-        new_count = parse_and_append(bib_file)
+        new_count = parse_and_append(bib_file, csv_path)
         if new_count > 0:
             # Exit with code 2 to indicate "Items Added" to the orchestrator
-            import sys
-            sys.exit(2)
+            return 2
     else:
         logger.error("Sync failed due to download error.")
-        import sys
-        sys.exit(1)
+        return 1
+    
+    return 0
 
 if __name__ == "__main__":
-    run_sync()
+    parser = argparse.ArgumentParser(description="Sync Data from OPAC")
+    parser.add_argument("--shelf-id", help="Manually specify shelf ID")
+    parser.add_argument("--output-dir", default=DEFAULT_DATA_DIR, help="Directory to save downloaded BibTeX")
+    parser.add_argument("--csv-path", default=DEFAULT_CSV_PATH, help="Path to main csv register")
+    
+    args = parser.parse_args()
+    
+    exit_code = run_sync(args.shelf_id, args.output_dir, args.csv_path)
+    import sys
+    sys.exit(exit_code)

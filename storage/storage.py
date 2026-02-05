@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import sys
@@ -10,13 +11,13 @@ sys.path.append(current_dir)
 
 import db
 
-INPUT_FILE = "data/processed/google_deduped.jsonl"
+DEFAULT_INPUT_FILE = "data/processed/google_deduped.jsonl"
 
-def ingest_to_db():
-    print(f"Ingesting from {INPUT_FILE} into database...")
+def ingest_to_db(input_file):
+    print(f"Ingesting from {input_file} into database...")
     
-    if not os.path.exists(INPUT_FILE):
-        print(f"Error: {INPUT_FILE} not found.")
+    if not os.path.exists(input_file):
+        print(f"Error: {input_file} not found.")
         return
 
     # Ensure tables exist
@@ -27,28 +28,41 @@ def ingest_to_db():
     added_count = 0
     skipped_count = 0
     
+    # Pre-fetch existing IDs for fast deduplication
+    print("Pre-fetching existing records to optimize incremental update...")
+    existing_isbns = set()
+    existing_google_ids = set()
     try:
-        with open(INPUT_FILE, 'r', encoding='utf-8') as f:
+        # Fetch only necessary columns
+        results = session.query(db.Book.isbn_13, db.Book.google_id).all()
+        for r_isbn, r_gid in results:
+            if r_isbn:
+                existing_isbns.add(r_isbn)
+            if r_gid:
+                existing_google_ids.add(r_gid)
+        print(f"Loaded {len(existing_isbns)} ISBNs and {len(existing_google_ids)} Google IDs from DB.")
+    except Exception as e:
+        print(f"Error fetching existing records: {e}")
+        session.close()
+        return
+
+    try:
+        with open(input_file, 'r', encoding='utf-8') as f:
             for line in f:
                 try:
                     data = json.loads(line)
                     
                     # Check if exists by ISBN_13
                     isbn_13 = data.get("isbn_13")
-                    
-                    if isbn_13:
-                        existing = session.query(db.Book).filter(db.Book.isbn_13 == isbn_13).first()
-                        if existing:
-                            skipped_count += 1
-                            continue
+                    if isbn_13 and isbn_13 in existing_isbns:
+                        skipped_count += 1
+                        continue
                     
                     # Also check by Google ID
                     g_id = data.get("google_id")
-                    if g_id:
-                        existing = session.query(db.Book).filter(db.Book.google_id == g_id).first()
-                        if existing:
-                            skipped_count += 1
-                            continue
+                    if g_id and g_id in existing_google_ids:
+                        skipped_count += 1
+                        continue
                     
                     # Convert list authors to string if needed.
                     authors = data.get("authors")
@@ -81,8 +95,13 @@ def ingest_to_db():
                     session.add(new_book)
                     added_count += 1
                     
+                    # Update local sets to catch duplicates within the same file
+                    if isbn_13:
+                        existing_isbns.add(isbn_13)
+                    if g_id:
+                        existing_google_ids.add(g_id)
+                    
                     # Commit in batches of 100 
-                    # Though One by one is safer for IntegrityError on unexpected constraint
                     if added_count % 100 == 0:
                          session.commit()
 
@@ -103,4 +122,8 @@ def ingest_to_db():
         session.close()
 
 if __name__ == "__main__":
-    ingest_to_db()
+    parser = argparse.ArgumentParser(description="Ingest Deduplicated Data into Database")
+    parser.add_argument("--input", default=DEFAULT_INPUT_FILE, help="Path to deduplicated JSONL file")
+    
+    args = parser.parse_args()
+    ingest_to_db(args.input)
