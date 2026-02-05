@@ -463,9 +463,6 @@ if final_query:
         st.session_state.history.append(final_query)
         if len(st.session_state.history) > 10:
             st.session_state.history.pop(0)
-
-    manager = get_embedding_manager()
-    session = get_db()
     
     # Only perform search if it's a new query OR page reset
     # (Actually, in Streamlit, it usually re-renders. We can optimize but let's keep it simple first)
@@ -541,8 +538,6 @@ if final_query:
                 if st.button("Next Page →", width="stretch"):
                     st.session_state.page += 1
                     st.rerun()
-    
-    session.close()
 else:
     st.write("---")
     st.markdown("""
