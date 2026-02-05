@@ -11,3 +11,7 @@ isort
 sqlalchemy
 matplotlib
 httpx
+sentence-transformers
+chromadb
+tf-keras
+streamlit

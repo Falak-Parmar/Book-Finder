@@ -1,14 +1,18 @@
 import argparse
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, Depends, HTTPException, Query
-from fastapi.middleware.cors import CORSMiddleware
+
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 import os
 import sys
+
+# Add project root to sys.path
+sys.path.append(os.getcwd())
+
+from ml.embeddings import EmbeddingManager
 
 # Add current directory to sys.path to ensure we can import storage
 # This handles cases where scripts are run from different contexts
@@ -56,6 +60,13 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Book Finder API")
 
+# Initialize Embedding Manager
+try:
+    embedding_manager = EmbeddingManager()
+except Exception as e:
+    print(f"Warning: Could not initialize EmbeddingManager: {e}")
+    embedding_manager = None
+
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
@@ -100,6 +111,44 @@ def search_books(q: str = Query(..., min_length=3), db: Session = Depends(get_db
         )
     ).all()
     return books
+
+@app.get("/semantic-search/", response_model=List[BookResponse])
+def semantic_search_books(q: str = Query(..., min_length=3), db: Session = Depends(get_db)):
+    """
+    Search books based on semantic meaning using vector embeddings.
+    """
+    if not embedding_manager:
+        raise HTTPException(status_code=503, detail="Semantic search engine is not initialized.")
+    
+    try:
+        # 1. Search in ChromaDB
+        search_results = embedding_manager.search(q, n_results=10)
+        
+        # 2. Extract identifiers (ISBN-13 or Google ID)
+        ids = search_results.get("ids", [[]])[0]
+        
+        if not ids:
+            return []
+            
+        # 3. Retrieve full book records from SQLite
+        # We need to map the IDs back to the books table.
+        # Since we stored ISBN-13 or Google ID, we check both.
+        books = db.query(Book).filter(
+            or_(
+                Book.isbn_13.in_(ids),
+                Book.google_id.in_(ids)
+            )
+        ).all()
+        
+        # Sort results based on the order returned from ChromaDB (similarity score)
+        id_to_index = {idx: i for i, idx in enumerate(ids)}
+        books.sort(key=lambda b: id_to_index.get(b.isbn_13) if b.isbn_13 in id_to_index else id_to_index.get(b.google_id, 999))
+        
+        return books
+        
+    except Exception as e:
+        print(f"Error during semantic search: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal Search Error: {str(e)}")
 
 @app.get("/sync/")
 def sync_data():
