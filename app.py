@@ -185,7 +185,7 @@ def show_book_details(book):
     
     col1, col2 = st.columns([1, 2])
     with col1:
-        st.image(thumbnail, use_container_width=True)
+        st.image(thumbnail, width="stretch")
     with col2:
         st.markdown(f"### {title}")
         if subtitle:
@@ -304,7 +304,7 @@ if st.session_state.history:
     st.markdown("##### Recent Searches")
     hist_cols = st.columns(min(len(st.session_state.history), 5))
     for i, h_query in enumerate(reversed(st.session_state.history[-5:])):
-        if hist_cols[i].button(h_query, key=f"hist_chip_{i}", use_container_width=True):
+        if hist_cols[i].button(h_query, key=f"hist_chip_{i}", width="stretch"):
             st.session_state.active_query = h_query
             st.session_state.page = 1  # Reset to page 1 on new search
             st.rerun()
@@ -383,7 +383,7 @@ if final_query:
             with card_col2:
                 st.write("") # Spacer
                 st.write("") # Spacer
-                if st.button("Details", key=f"details_{book.isbn_13}_{i}", use_container_width=True):
+                if st.button("Details", key=f"details_{book.isbn_13}_{i}", width="stretch"):
                     show_book_details(book)
         
         # Pagination Controls
@@ -391,7 +391,7 @@ if final_query:
         col_prev, col_mid, col_next = st.columns([1, 2, 1])
         with col_prev:
             if st.session_state.page > 1:
-                if st.button("← Previous Page", use_container_width=True):
+                if st.button("← Previous Page", width="stretch"):
                     st.session_state.page -= 1
                     st.rerun()
         with col_mid:
@@ -399,7 +399,7 @@ if final_query:
             st.markdown(f"<p style='text-align: center;'>Page <b>{st.session_state.page}</b> of {num_pages}</p>", unsafe_allow_html=True)
         with col_next:
             if end_idx < total:
-                if st.button("Next Page →", use_container_width=True):
+                if st.button("Next Page →", width="stretch"):
                     st.session_state.page += 1
                     st.rerun()
     
