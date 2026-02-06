@@ -5,9 +5,8 @@ import sys
 import html
 from sqlalchemy.orm import Session
 
-# Force offline mode for transformers/huggingface to avoid timeouts
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
-os.environ["HF_HUB_OFFLINE"] = "1"
+# Version stamp for deployment verification
+APP_VERSION = "v1.2-STABLE"
 
 # Add project root to sys.path
 sys.path.append(os.getcwd())
@@ -152,6 +151,15 @@ st.markdown(f"""
         stroke: var(--text-color) !important;
     }}
     
+    /* Force white color for all sidebar buttons and icons */
+    [data-testid="stSidebar"] button, 
+    [data-testid="stSidebar"] svg,
+    [data-testid="collapsedControl"] svg {{
+        fill: white !important;
+        color: white !important;
+        opacity: 1 !important;
+    }}
+
     .main-header {{
         font-size: 3rem;
         font-weight: 800;
@@ -506,8 +514,12 @@ query_input = st.text_input(
     help="Type your query and press Enter. Click history chips below to reuse previous searches."
 )
 
-if st.session_state.history:
-    st.markdown("##### Recent Searches")
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+with st.sidebar:
+    st.markdown(f"**Version:** `{APP_VERSION}`")
+    st.image("https://raw.githubusercontent.com/Falak-Parmar/Book-Finder/main/data/logo.png", width=250)
     hist_cols = st.columns(min(len(st.session_state.history), 5))
     for i, h_query in enumerate(reversed(st.session_state.history[-5:])):
         if hist_cols[i].button(h_query, key=f"hist_chip_{i}", width="stretch"):
