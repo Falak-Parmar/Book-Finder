@@ -111,6 +111,21 @@ st.markdown(f"""
         color: var(--text-color) !important;
     }}
     
+    /* ULTRA-AGGRESSIVE CSS FOR SIDEBAR ARROW */
+    [data-testid="collapsedControl"] {{
+        color: var(--text-color) !important;
+        fill: var(--text-color) !important;
+    }}
+    [data-testid="collapsedControl"] svg {{
+        fill: currentColor !important;
+        width: 32px !important;
+        height: 32px !important;
+        filter: brightness(0) invert(1) !important; /* Force white for visibility */
+    }}
+    section[data-testid="stSidebar"] button svg {{
+        fill: white !important;
+    }}
+    
     /* VERY aggressive fix for sidebar arrows and header icons */
     [data-testid="collapsedControl"] svg,
     [data-testid="stHeader"] svg,
@@ -292,6 +307,18 @@ def get_db():
         return None
     return db.SessionLocal()
 
+def get_api_health():
+    """Check if the backend is actually ready"""
+    if not API_URL:
+        return {"status": "local", "message": "Running in Local Mode"}
+    try:
+        response = requests.get(f"{API_URL}/health", timeout=5)
+        if response.status_code == 200:
+            return response.json()
+        return {"status": "error", "message": f"HTTP {response.status_code}"}
+    except Exception:
+        return {"status": "offline", "message": "API is waking up..."}
+
 @st.dialog("Book Details", width="large")
 def show_book_details(book):
     title = html.escape(book.title) if book.title else "Untitled"
@@ -320,16 +347,16 @@ def show_book_details(book):
 def perform_semantic_search_cached(query, n_results=300, threshold=DISTANCE_THRESHOLD):
     if API_URL:
         try:
-            # Increase timeout to 60s to handle lazy loading of ML model on Render free tier
-            response = requests.get(f"{API_URL}/semantic-search/", params={"q": query}, timeout=60)
+            # Increase timeout to 120s to handle cold starts and high load on Render Free tier
+            response = requests.get(f"{API_URL}/semantic-search/", params={"q": query}, timeout=120)
             if response.status_code == 200:
                 books_data = response.json()
                 return [BookWrapper(b) for b in books_data]
             else:
-                st.error(f"API Error: {response.status_code}")
+                st.error(f"API Error: {response.status_code}. The server might still be initializing.")
                 return []
         except Exception as e:
-            st.error(f"Failed to connect to API: {e}")
+            st.error(f"API Connection Issue: {e}. Please wait a moment and try again.")
             return []
 
     if not HAS_LOCAL_DEPS:
@@ -459,6 +486,18 @@ with st.sidebar:
         st.info("💡 Semantic search is best for themes, topics, and descriptions.")
     else:
         st.info("💡 Keyword search is best for specific titles, authors, or ISBNs.")
+
+    st.divider()
+    st.markdown("### System Status")
+    health = get_api_health()
+    if health["status"] == "healthy":
+        st.success("✅ API is Online & Ready")
+    elif health["status"] == "loading":
+        st.warning("⏳ API is Warming Up...")
+    elif health["status"] == "offline":
+        st.error("❌ API is Offline")
+    else:
+        st.info(f"ℹ️ {health['message']}")
 
 # Main Search Area
 query_input = st.text_input(
