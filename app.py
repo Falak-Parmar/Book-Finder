@@ -339,7 +339,7 @@ def show_book_details(book):
     
     col1, col2 = st.columns([1, 2])
     with col1:
-        st.image(thumbnail, width="stretch")
+        st.image(thumbnail, use_container_width=True)
     with col2:
         st.markdown(f"### {title}")
         if subtitle:
@@ -604,7 +604,7 @@ if final_query:
             with card_col2:
                 st.write("") # Spacer
                 st.write("") # Spacer
-                if st.button("Details", key=f"details_{book.isbn_13}_{i}", width="stretch"):
+                if st.button("Details", key=f"details_{book.isbn_13}_{i}", use_container_width=True):
                     show_book_details(book)
         
         # Pagination Controls
@@ -612,7 +612,7 @@ if final_query:
         col_prev, col_mid, col_next = st.columns([1, 2, 1])
         with col_prev:
             if st.session_state.page > 1:
-                if st.button("← Previous Page", width="stretch"):
+                if st.button("← Previous Page", use_container_width=True):
                     st.session_state.page -= 1
                     st.rerun()
         with col_mid:
@@ -620,7 +620,7 @@ if final_query:
             st.markdown(f"<p style='text-align: center;'>Page <b>{st.session_state.page}</b> of {num_pages}</p>", unsafe_allow_html=True)
         with col_next:
             if end_idx < total:
-                if st.button("Next Page →", width="stretch"):
+                if st.button("Next Page →", use_container_width=True):
                     st.session_state.page += 1
                     st.rerun()
 else:
