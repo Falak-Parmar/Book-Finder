@@ -111,6 +111,17 @@ st.markdown(f"""
         color: var(--text-color) !important;
     }}
     
+    /* VERY aggressive fix for sidebar arrows and header icons */
+    [data-testid="collapsedControl"] svg,
+    [data-testid="stHeader"] svg,
+    [data-testid="stSidebarNav"] svg,
+    button[kind="header"] svg,
+    .st-emotion-cache-6qob1r {{
+        fill: white !important;
+        color: white !important;
+        filter: brightness(0) invert(1) !important;
+    }}
+    
     /* Fix for sidebar menu arrow visibility in dark mode */
     [data-testid="collapsedControl"] svg, 
     [data-testid="stSidebarNav"] svg,

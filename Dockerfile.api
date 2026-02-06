@@ -30,4 +30,4 @@ EXPOSE 8000
 
 # Start the application using Gunicorn with Uvicorn workers
 # We use 1 worker to save memory on constrained environments like Render free tier
-CMD gunicorn -w 1 -k uvicorn.workers.UvicornWorker api.serving:app --bind 0.0.0.0:$PORT --timeout 120
+CMD gunicorn -w 1 -k uvicorn.workers.UvicornWorker api.serving:app --bind 0.0.0.0:$PORT --timeout 180

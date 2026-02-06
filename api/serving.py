@@ -77,6 +77,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/health")
+def health_check():
+    """Check if the API and search engine are ready."""
+    if not embedding_manager:
+        return {"status": "loading", "message": "Search engine still initializing..."}
+    return {"status": "healthy", "model": "loaded"}
+
 @app.get("/books/", response_model=List[BookResponse])
 def read_books(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """
