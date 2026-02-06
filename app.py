@@ -519,13 +519,26 @@ if "history" not in st.session_state:
 
 with st.sidebar:
     st.markdown(f"**Version:** `{APP_VERSION}`")
-    st.image("https://raw.githubusercontent.com/Falak-Parmar/Book-Finder/main/data/logo.png", width=250)
-    hist_cols = st.columns(min(len(st.session_state.history), 5))
-    for i, h_query in enumerate(reversed(st.session_state.history[-5:])):
-        if hist_cols[i].button(h_query, key=f"hist_chip_{i}", width="stretch"):
-            st.session_state.active_query = h_query
-            st.session_state.page = 1  # Reset to page 1 on new search
-            st.rerun()
+    # Health status check
+    health = get_api_health()
+    if health["status"] == "healthy":
+        st.success("✅ API is Online & Ready")
+    elif health["status"] == "loading":
+        st.warning("⏳ API is Warming Up...")
+    elif health["status"] == "offline":
+        st.error("❌ API is Offline")
+    else:
+        st.info(f"ℹ️ {health['message']}")
+        
+    st.divider()
+    if st.session_state.history:
+        st.markdown("##### Recent Searches")
+        hist_cols = st.columns(min(len(st.session_state.history), 5))
+        for i, h_query in enumerate(reversed(st.session_state.history[-5:])):
+            if hist_cols[i].button(h_query, key=f"hist_chip_{i}", width="stretch"):
+                st.session_state.active_query = h_query
+                st.session_state.page = 1  # Reset to page 1 on new search
+                st.rerun()
 
 final_query = st.session_state.get('active_query', query_input)
 
