@@ -528,7 +528,7 @@ with st.sidebar:
         st.markdown("##### Recent Searches")
         hist_cols = st.columns(min(len(st.session_state.history), 5))
         for i, h_query in enumerate(reversed(st.session_state.history[-5:])):
-            if hist_cols[i].button(h_query, key=f"hist_chip_{i}", width="stretch"):
+            if hist_cols[i].button(h_query, key=f"hist_chip_{i}"):
                 st.session_state.active_query = h_query
                 st.session_state.page = 1  # Reset to page 1 on new search
                 st.rerun()
