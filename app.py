@@ -219,7 +219,7 @@ st.markdown("""
 # --- Logic ---
 
 PAGE_SIZE = 15
-DISTANCE_THRESHOLD = 0.7  # Lower distance means higher similarity
+DISTANCE_THRESHOLD = 0.85  # Relaxed from 0.7 for better recall
 
 @st.cache_resource(show_spinner=False)
 def get_embedding_manager():
@@ -418,6 +418,15 @@ with st.sidebar:
         st.error("❌ API is Offline")
     elif health["status"] == "local":
         st.success("🏠 Running in Local Mode (HF)")
+        try:
+            manager = get_embedding_manager()
+            if manager:
+                count = manager.collection.count()
+                st.caption(f"📚 Semantic Index Size: {count} books")
+                if count == 0:
+                    st.warning("⚠️ Vector index is empty. Please re-upload the contents of the vector_store folder.")
+        except Exception as e:
+            st.caption(f"⚠️ Index Error: {str(e)[:50]}")
     else:
         st.info(f"ℹ️ {health['message']}")
     
