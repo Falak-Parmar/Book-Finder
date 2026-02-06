@@ -1,0 +1,17 @@
+# Data
+data/*
+data/books.db
+data/vector_store/
+data/vector_store/chroma.sqlite3
+*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+venv/
+.venv/
+.DS_Store
+
+analysis/

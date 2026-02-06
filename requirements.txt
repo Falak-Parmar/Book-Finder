@@ -1,0 +1,19 @@
+pandas
+requests
+fastapi
+uvicorn[standard]
+gunicorn
+python-multipart
+aiohttp
+# optional for development
+pytest
+black
+isort
+sqlalchemy
+matplotlib
+httpx
+sentence-transformers
+chromadb
+streamlit>=1.40.0
+protobuf==3.20.3
+altair==4.2.2
