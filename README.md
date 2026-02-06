@@ -1,3 +1,14 @@
+---
+title: Book Finder
+emoji: 📚
+colorFrom: blue
+colorTo: indigo
+sdk: streamlit
+sdk_version: 1.40.0
+app_file: app.py
+pinned: false
+---
+
 # Book Finder — Big Data Engineering  
 ### End-to-End ETL Pipeline + Google Books Enrichment + FastAPI Service  
 **Phase 1 Data Engineering Project**

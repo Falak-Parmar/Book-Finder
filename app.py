@@ -504,8 +504,12 @@ with st.sidebar:
         st.warning("⏳ API is Warming Up...")
     elif health["status"] == "offline":
         st.error("❌ API is Offline")
+    elif health["status"] == "local":
+        st.success("🏠 Running in Local Mode (HF)")
     else:
         st.info(f"ℹ️ {health['message']}")
+    
+    st.markdown(f"**Version:** `{APP_VERSION}`")
 
 # Main Search Area
 query_input = st.text_input(
@@ -518,20 +522,9 @@ if "history" not in st.session_state:
     st.session_state.history = []
 
 with st.sidebar:
-    st.markdown(f"**Version:** `{APP_VERSION}`")
-    # Health status check
-    health = get_api_health()
-    if health["status"] == "healthy":
-        st.success("✅ API is Online & Ready")
-    elif health["status"] == "loading":
-        st.warning("⏳ API is Warming Up...")
-    elif health["status"] == "offline":
-        st.error("❌ API is Offline")
-    else:
-        st.info(f"ℹ️ {health['message']}")
-        
-    st.divider()
+    # History chips
     if st.session_state.history:
+        st.divider()
         st.markdown("##### Recent Searches")
         hist_cols = st.columns(min(len(st.session_state.history), 5))
         for i, h_query in enumerate(reversed(st.session_state.history[-5:])):
