@@ -21,15 +21,15 @@ class EmbeddingManager:
             model_name=MODEL_NAME
         )
         
+        # Link the internal model to avoid loading it twice in RAM (Saves ~200MB)
+        self.model = self.embedding_fn._model
+        
         # Get or create the collection
         self.collection = self.client.get_or_create_collection(
             name=COLLECTION_NAME,
             embedding_function=self.embedding_fn,
             metadata={"hnsw:space": "cosine"}
         )
-        
-        # Also load the model separately for direct embedding generation if needed
-        self.model = SentenceTransformer(MODEL_NAME)
 
     def generate_embeddings(self, texts):
         """
