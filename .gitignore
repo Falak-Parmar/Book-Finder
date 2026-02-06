@@ -1,12 +1,9 @@
 # Data
-# We allow books.db to be pushed for production deployment
-data/vector_store/
-data/*.jsonl
-data/raw/
-data/processed/
+data/*
+!data/books.db
+!data/vector_store/
+!data/vector_store/chroma.sqlite3
 *.csv
-# Keep sqlite3 and other db patterns ignored, but we will force the main books.db if needed
-# Actually, let's just ignore the vector store and raw data specifically
 
 # Python
 __pycache__/

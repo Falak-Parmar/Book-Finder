@@ -28,8 +28,8 @@ class EmbeddingManager:
             metadata={"hnsw:space": "cosine"}
         )
         
-        # Access the underlying model to avoid loading it twice
-        self.model = self.embedding_fn.models
+        # Also load the model separately for direct embedding generation if needed
+        self.model = SentenceTransformer(MODEL_NAME)
 
     def generate_embeddings(self, texts):
         """

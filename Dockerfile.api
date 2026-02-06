@@ -21,14 +21,13 @@ RUN pip3 install --no-cache-dir gunicorn
 # Copy project files
 COPY . .
 
-# Pre-download the model and run indexing
-# This ensures the model is cached and vectors are generated in the image layer
-# We limit to 1000 books for the initial build to avoid Render free-tier timeouts.
-RUN python scripts/download_model.py && python ml/index_books.py --limit 1000
+# Pre-download the model
+# This ensures the model is cached in the image layer
+RUN python scripts/download_model.py
 
 # Expose port (Render sets $PORT env var)
 EXPOSE 8000
 
-# Start the application using Gunicorn with a SINGLE Uvicorn worker.
-# We MUST use only 1 worker on Render free-tier because the ML model takes ~400MB RAM.
-CMD gunicorn -w 1 -k uvicorn.workers.UvicornWorker api.serving:app --bind 0.0.0.0:$PORT
+# Start the application using Gunicorn with Uvicorn workers
+# We use 1 worker to save memory on constrained environments like Render free tier
+CMD gunicorn -w 1 -k uvicorn.workers.UvicornWorker api.serving:app --bind 0.0.0.0:$PORT --timeout 120

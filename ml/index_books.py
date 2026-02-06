@@ -26,18 +26,13 @@ def prepare_book_text(book):
     
     return " | ".join(parts)
 
-def index_all_books(limit=None):
+def index_all_books():
     print("Initializing Database and Embedding Manager...")
     session = db.SessionLocal()
     manager = EmbeddingManager()
     
     print("Fetching books from SQLite...")
-    query = session.query(db.Book)
-    if limit:
-        print(f"Applying limit: {limit} books.")
-        query = query.limit(limit)
-        
-    books = query.all()
+    books = session.query(db.Book).all()
     print(f"Found {len(books)} books.")
     
     ids = []
@@ -79,9 +74,4 @@ def index_all_books(limit=None):
     session.close()
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--limit", type=int, default=None, help="Limit the number of books to index")
-    args = parser.parse_args()
-    
-    index_all_books(limit=args.limit)
+    index_all_books()
