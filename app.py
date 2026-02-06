@@ -111,6 +111,12 @@ st.markdown(f"""
         color: var(--text-color) !important;
     }}
     
+    /* Fix for sidebar menu arrow visibility in dark mode */
+    [data-testid="collapsedControl"] svg, [data-testid="stSidebarNav"] svg {{
+        fill: var(--text-color) !important;
+        color: var(--text-color) !important;
+    }}
+    
     .main-header {{
         font-size: 3rem;
         font-weight: 800;
@@ -294,7 +300,8 @@ def show_book_details(book):
 def perform_semantic_search_cached(query, n_results=300, threshold=DISTANCE_THRESHOLD):
     if API_URL:
         try:
-            response = requests.get(f"{API_URL}/semantic-search/", params={"q": query}, timeout=15)
+            # Increase timeout to 60s to handle lazy loading of ML model on Render free tier
+            response = requests.get(f"{API_URL}/semantic-search/", params={"q": query}, timeout=60)
             if response.status_code == 200:
                 books_data = response.json()
                 return [BookWrapper(b) for b in books_data]
@@ -347,7 +354,8 @@ def perform_semantic_search_cached(query, n_results=300, threshold=DISTANCE_THRE
 def perform_keyword_search_cached(query):
     if API_URL:
         try:
-            response = requests.get(f"{API_URL}/search/", params={"q": query}, timeout=10)
+            # Increase timeout to 30s to handle initial API connection
+            response = requests.get(f"{API_URL}/search/", params={"q": query}, timeout=30)
             if response.status_code == 200:
                 books_data = response.json()
                 results = [BookWrapper(b) for b in books_data]
