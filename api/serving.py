@@ -60,20 +60,13 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Book Finder API")
 
-# Lazy-loaded Embedding Manager
-_embedding_manager = None
-
-def get_embedding_manager():
-    global _embedding_manager
-    if _embedding_manager is None:
-        try:
-            print("Initializing EmbeddingManager (Lazy Loading)...")
-            from ml.embeddings import EmbeddingManager
-            _embedding_manager = EmbeddingManager()
-        except Exception as e:
-            print(f"Critical Error: Could not initialize EmbeddingManager: {e}")
-            return None
-    return _embedding_manager
+# Initialize Embedding Manager (Eagerly load to avoid first-hit timeouts)
+try:
+    print("Initializing EmbeddingManager...")
+    embedding_manager = EmbeddingManager()
+except Exception as e:
+    print(f"Warning: Could not initialize EmbeddingManager: {e}")
+    embedding_manager = None
 
 # CORS Configuration
 app.add_middleware(
@@ -131,13 +124,12 @@ def semantic_search_books(
     Search books based on semantic meaning using vector embeddings.
     Matches the logic used in the Streamlit application.
     """
-    manager = get_embedding_manager()
-    if not manager:
+    if not embedding_manager:
         raise HTTPException(status_code=503, detail="Semantic search engine is not initialized (check model download).")
     
     try:
         # 1. Search in ChromaDB with a larger pool for filtering
-        search_results = manager.search(q, n_results=300)
+        search_results = embedding_manager.search(q, n_results=300)
         
         # 2. Extract identifiers and distances
         ids = search_results.get("ids", [[]])[0]

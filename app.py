@@ -112,9 +112,18 @@ st.markdown(f"""
     }}
     
     /* Fix for sidebar menu arrow visibility in dark mode */
-    [data-testid="collapsedControl"] svg, [data-testid="stSidebarNav"] svg {{
+    [data-testid="collapsedControl"] svg, 
+    [data-testid="stSidebarNav"] svg,
+    button[kind="header"] svg,
+    .st-emotion-cache-6qob1r {{
         fill: var(--text-color) !important;
         color: var(--text-color) !important;
+    }}
+    
+    /* Force visibility of the expand/collapse icon */
+    [data-testid="stSidebar"] svg, [data-testid="collapsedControl"] svg {{
+        background-color: transparent !important;
+        stroke: var(--text-color) !important;
     }}
     
     .main-header {{
