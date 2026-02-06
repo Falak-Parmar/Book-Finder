@@ -35,149 +35,67 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Theme Configuration ---
-if 'theme_choice' not in st.session_state:
-    st.session_state.theme_choice = "Dark High Contrast"
-
-themes = {
-    "Light High Contrast": {
-        "bg_color": "#ffffff",
-        "text_color": "#0e1116",
-        "primary_color": "#0969da",
-        "secondary_color": "#0550ae",
-        "card_bg": "#ffffff",
-        "border_color": "#1b1f24",
-        "muted_text": "#4b535d",
-        "tag_bg": "rgba(9, 105, 218, 0.1)",
-        "tag_text": "#0969da",
-        "header_gradient": "linear-gradient(90deg, #0969da, #1f2328)"
-    },
-    "Dark High Contrast": {
-        "bg_color": "#010409",
-        "text_color": "#ffffff",
-        "primary_color": "#4493f8",
-        "secondary_color": "#1f6feb",
-        "card_bg": "#0d1117",
-        "border_color": "#30363d",
-        "muted_text": "#8b949e",
-        "tag_bg": "rgba(68, 147, 248, 0.1)",
-        "tag_text": "#4493f8",
-        "header_gradient": "linear-gradient(90deg, #4493f8, #ffffff)"
-    }
-}
-
-t = themes[st.session_state.theme_choice]
-
-st.markdown(f"""
+# --- UI Configuration ---
+st.markdown("""
 <style>
-    :root {{
-        --primary-color: {t['primary_color']};
-        --secondary-color: {t['secondary_color']};
-        --bg-color: {t['bg_color']};
-        --text-color: {t['text_color']};
-        --card-bg: {t['card_bg']};
-        --border-color: {t['border_color']};
-        --muted-text: {t['muted_text']};
-        --tag-bg: {t['tag_bg']};
-        --tag-text: {t['tag_text']};
-    }}
+    :root {
+        --primary-color: #0969da;
+        --secondary-color: #0550ae;
+        --bg-color: #ffffff;
+        --text-color: #0e1116;
+        --card-bg: #ffffff;
+        --border-color: #d0d7de;
+        --muted-text: #4b535d;
+        --tag-bg: rgba(9, 105, 218, 0.1);
+        --tag-text: #0969da;
+    }
     
-    .stApp {{
+    .stApp {
         background-color: var(--bg-color);
         color: var(--text-color);
-    }}
+    }
 
     /* Fix for white header spill and toolbar */
-    header[data-testid="stHeader"], [data-testid="stToolbar"] {{
+    header[data-testid="stHeader"], [data-testid="stToolbar"] {
         background-color: var(--bg-color) !important;
         background: var(--bg-color) !important;
-    }}
+    }
 
     /* Remove the colorful line at the top */
-    [data-testid="stDecoration"] {{
+    [data-testid="stDecoration"] {
         display: none;
-    }}
+    }
 
     /* Global input styling */
-    .stTextInput input, .stSelectbox [data-baseweb="select"], .stSelectbox [role="button"] {{
+    .stTextInput input, .stSelectbox [data-baseweb="select"], .stSelectbox [role="button"] {
         background-color: var(--card-bg) !important;
         color: var(--text-color) !important;
         border: 1px solid var(--border-color) !important;
-    }}
+    }
     
     /* Ensure markdown lists and text use the text-color variable */
-    .stMarkdown, .stMarkdown p, .stMarkdown li {{
+    .stMarkdown, .stMarkdown p, .stMarkdown li {
         color: var(--text-color) !important;
-    }}
-    
-    /* ULTRA-AGGRESSIVE CSS FOR SIDEBAR ARROW */
-    [data-testid="collapsedControl"] {{
-        color: var(--text-color) !important;
-        fill: var(--text-color) !important;
-    }}
-    [data-testid="collapsedControl"] svg {{
-        fill: currentColor !important;
-        width: 32px !important;
-        height: 32px !important;
-        filter: brightness(0) invert(1) !important; /* Force white for visibility */
-    }}
-    section[data-testid="stSidebar"] button svg {{
-        fill: white !important;
-    }}
-    
-    /* VERY aggressive fix for sidebar arrows and header icons */
-    [data-testid="collapsedControl"] svg,
-    [data-testid="stHeader"] svg,
-    [data-testid="stSidebarNav"] svg,
-    button[kind="header"] svg,
-    .st-emotion-cache-6qob1r {{
-        fill: white !important;
-        color: white !important;
-        filter: brightness(0) invert(1) !important;
-    }}
-    
-    /* Fix for sidebar menu arrow visibility in dark mode */
-    [data-testid="collapsedControl"] svg, 
-    [data-testid="stSidebarNav"] svg,
-    button[kind="header"] svg,
-    .st-emotion-cache-6qob1r {{
-        fill: var(--text-color) !important;
-        color: var(--text-color) !important;
-    }}
-    
-    /* Force visibility of the expand/collapse icon */
-    [data-testid="stSidebar"] svg, [data-testid="collapsedControl"] svg {{
-        background-color: transparent !important;
-        stroke: var(--text-color) !important;
-    }}
-    
-    /* Force white color for all sidebar buttons and icons */
-    [data-testid="stSidebar"] button, 
-    [data-testid="stSidebar"] svg,
-    [data-testid="collapsedControl"] svg {{
-        fill: white !important;
-        color: white !important;
-        opacity: 1 !important;
-    }}
+    }
 
-    .main-header {{
+    .main-header {
         font-size: 3rem;
         font-weight: 800;
-        background: {t['header_gradient']};
+        background: linear-gradient(90deg, #0969da, #1f2328);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 0.5rem;
         text-align: center;
-    }}
+    }
     
-    .sub-header {{
+    .sub-header {
         font-size: 1.2rem;
         color: var(--muted-text);
         text-align: center;
         margin-bottom: 3rem;
-    }}
+    }
     
-    .book-card {{
+    .book-card {
         background: var(--card-bg);
         border: 1px solid var(--border-color);
         border-radius: 8px;
@@ -186,46 +104,46 @@ st.markdown(f"""
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         display: flex;
         gap: 1.5rem;
-    }}
+    }
     
-    .book-card:hover {{
+    .book-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         border-color: var(--primary-color);
-    }}
+    }
     
-    .book-thumbnail {{
+    .book-thumbnail {
         width: 120px;
         height: 180px;
         border-radius: 4px;
         object-fit: cover;
         border: 1px solid var(--border-color);
-    }}
+    }
     
-    .book-info {{
+    .book-info {
         flex: 1;
-    }}
+    }
     
-    .book-title {{
+    .book-title {
         font-size: 1.4rem;
         font-weight: 700;
         color: var(--text-color);
         margin-bottom: 0.25rem;
-    }}
+    }
     
-    .book-subtitle {{
+    .book-subtitle {
         font-size: 1rem;
         color: var(--muted-text);
         margin-bottom: 1rem;
-    }}
+    }
     
-    .book-author {{
+    .book-author {
         font-size: 0.95rem;
         color: var(--primary-color);
         margin-bottom: 1rem;
-    }}
+    }
     
-    .book-description {{
+    .book-description {
         font-size: 0.9rem;
         line-height: 1.5;
         color: var(--text-color);
@@ -233,63 +151,68 @@ st.markdown(f"""
         -webkit-line-clamp: 3;
         -webkit-box-orient: vertical;
         overflow: hidden;
-        opacity: 0.9;
-    }}
+    }
     
-    .category-tag {{
+    .category-tag {
         display: inline-block;
-        background: var(--tag-bg);
+        background-color: var(--tag-bg);
         color: var(--tag-text);
         padding: 0.2rem 0.6rem;
-        border-radius: 9999px;
+        border-radius: 12px;
         font-size: 0.75rem;
         font-weight: 600;
         margin-top: 1rem;
-        border: 1px solid var(--tag-bg);
-    }}
+    }
 
     /* Button Styling Overrides */
-    div.stButton > button {{
+    div.stButton > button {
         background-color: var(--primary-color) !important;
         color: white !important;
         border: 1px solid var(--border-color) !important;
         transition: all 0.2s ease !important;
         border-radius: 6px !important;
         font-weight: 600 !important;
-    }}
+    }
 
-    div.stButton > button:hover {{
+    div.stButton > button:hover {
         background-color: var(--secondary-color) !important;
         border-color: var(--primary-color) !important;
-    }}
+    }
 
     /* History chips specific styling */
-    [data-testid="stHorizontalBlock"] div.stButton > button {{
+    [data-testid="stHorizontalBlock"] div.stButton > button {
         font-size: 0.8rem;
         padding: 0.2rem 0.5rem;
         background-color: var(--card-bg) !important;
         color: var(--text-color) !important;
         border: 1px solid var(--border-color) !important;
-    }}
+    }
 
-    [data-testid="stHorizontalBlock"] div.stButton > button:hover {{
+    /* Modal Styling */
+    .stDialog > div:first-child {
+        background-color: var(--bg-color) !important;
+        color: var(--text-color) !important;
+        border: 1px solid var(--border-color) !important;
+    }
+
+    [data-testid="stHorizontalBlock"] div.stButton > button:hover {
         background-color: var(--tag-bg) !important;
         color: var(--tag-text) !important;
         border-color: var(--primary-color) !important;
-    }}
+    }
 
     /* Muted search info */
-    .search-info {{
+    .search-info {
         color: var(--muted-text);
         margin-bottom: 1.5rem;
         font-size: 0.9rem;
-    }}
+    }
 
     /* Sidebar adjustments */
-    section[data-testid="stSidebar"] {{
+    section[data-testid="stSidebar"] {
         background-color: var(--card-bg);
         border-right: 1px solid var(--border-color);
-    }}
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -327,7 +250,7 @@ def get_api_health():
     except Exception:
         return {"status": "offline", "message": "API is waking up..."}
 
-@st.dialog("Book Details", width="large")
+@st.dialog("Book Details")
 def show_book_details(book):
     title = html.escape(book.title) if book.title else "Untitled"
     subtitle = html.escape(book.subtitle) if book.subtitle else ""
@@ -469,18 +392,7 @@ st.markdown('<div class="sub-header">Discover your next read through meaning, no
 
 # Sidebar
 with st.sidebar:
-    st.image("https://www.daiict.ac.in/sites/default/files/inline-images/Dhirubhai-Ambani-University-new-logo.jpg", width=250)
-    
-    st.divider()
-    st.markdown("### Appearance")
-    theme_choice = st.selectbox(
-        "Theme",
-        options=list(themes.keys()),
-        index=list(themes.keys()).index(st.session_state.theme_choice)
-    )
-    if theme_choice != st.session_state.theme_choice:
-        st.session_state.theme_choice = theme_choice
-        st.rerun()
+    st.image("https://www.daiict.ac.in/sites/default/files/inline-images/Dhirubhai-Ambani-University-new-logo.jpg", use_container_width=True)
 
     st.divider()
     st.markdown("### Search Settings")
