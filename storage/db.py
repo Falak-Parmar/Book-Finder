@@ -1,8 +1,16 @@
 from sqlalchemy import create_engine, Column, Integer, String, Text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# The database file location relative to the project root
-SQLALCHEMY_DATABASE_URL = "sqlite:///./data/books.db"
+import os
+
+# Auto-detect database location (works both locally and on HF if uploaded to root)
+if os.path.exists("./data/books.db"):
+    SQLALCHEMY_DATABASE_URL = "sqlite:///./data/books.db"
+elif os.path.exists("./books.db"):
+    SQLALCHEMY_DATABASE_URL = "sqlite:///./books.db"
+else:
+    # Default to data/books.db (will be created if missing)
+    SQLALCHEMY_DATABASE_URL = "sqlite:///./data/books.db"
 
 # connect_args={"check_same_thread": False} is needed only for SQLite
 engine = create_engine(

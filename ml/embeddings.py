@@ -5,12 +5,19 @@ import os
 
 # --- Configuration ---
 MODEL_NAME = "all-MiniLM-L6-v2"
-DB_PATH = "data/vector_store"
+# Auto-detect vector store location
+if os.path.exists("./data/vector_store"):
+    DB_PATH = "data/vector_store"
+elif os.path.exists("./vector_store"):
+    DB_PATH = "vector_store"
+else:
+    DB_PATH = "data/vector_store"
+
 COLLECTION_NAME = "books"
 
 class EmbeddingManager:
     def __init__(self):
-        # Ensure the data directory exists
+        # Ensure the parent directory exists for the path
         os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
         
         # Initialize chroma client
