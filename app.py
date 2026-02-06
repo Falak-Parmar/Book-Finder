@@ -219,7 +219,7 @@ st.markdown("""
 # --- Logic ---
 
 PAGE_SIZE = 15
-DISTANCE_THRESHOLD = 0.85  # Relaxed from 0.7 for better recall
+DISTANCE_THRESHOLD = 0.7  # Reverted to 0.7 for higher precision
 
 @st.cache_resource(show_spinner=False)
 def get_embedding_manager():
