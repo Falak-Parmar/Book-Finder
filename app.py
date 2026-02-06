@@ -380,10 +380,10 @@ if 'page' not in st.session_state:
     st.session_state.page = 1
 if 'total_results' not in st.session_state:
     st.session_state.total_results = 0
-if 'current_results' not in st.session_state:
-    st.session_state.current_results = []
-if 'last_final_query' not in st.session_state:
-    st.session_state.last_final_query = ""
+if 'active_query_results' not in st.session_state:
+    st.session_state.active_query_results = []
+if 'last_search_query' not in st.session_state:
+    st.session_state.last_search_query = ""
 
 # --- UI ---
 
@@ -456,27 +456,18 @@ with st.sidebar:
 
 final_query = st.session_state.get('active_query', query_input)
 
-# Detect if the query has changed to reset page
-if final_query != st.session_state.last_final_query:
-    st.session_state.page = 1
-    st.session_state.last_final_query = final_query
+# Determine if the query has changed to trigger a search
+is_new_query = final_query != st.session_state.get('last_search_query', "")
+is_new_mode = search_mode != st.session_state.get('last_search_mode', "")
 
 if final_query:
-    if 'active_query' in st.session_state:
-        del st.session_state['active_query']
+    if "History" in final_query: # Edge case for history logic
+        pass
+
+    if is_new_query or is_new_mode or "active_query_results" not in st.session_state:
+        st.session_state.page = 1  # Reset to page 1 on new search
         
-    if final_query and final_query not in st.session_state.history:
-        st.session_state.history.append(final_query)
-        if len(st.session_state.history) > 10:
-            st.session_state.history.pop(0)
-    
-    # Only perform search if it's a new query OR page reset
-    # (Actually, in Streamlit, it usually re-renders. We can optimize but let's keep it simple first)
-    with st.spinner("Finding the best matches..."):
-        # For Semantic Search, we fetch a large pool and paginate locally
-        # For Keyword Search, we fetch all and paginate locally (given the DB is small enough)
-        # In a real app, we'd use offset/limit on the DB.
-        if "active_query_results" not in st.session_state or st.session_state.last_final_query != final_query or st.session_state.get('last_search_mode') != search_mode:
+        with st.spinner("Finding the best matches..."):
             if "Semantic" in search_mode:
                 results = perform_semantic_search_cached(final_query)
                 total = len(results)
@@ -485,7 +476,17 @@ if final_query:
             
             st.session_state.active_query_results = results
             st.session_state.total_results = total
+            st.session_state.last_search_query = final_query
             st.session_state.last_search_mode = search_mode
+            
+    # Cleanup history trigger
+    if 'active_query' in st.session_state:
+        del st.session_state['active_query']
+        
+    if final_query not in st.session_state.history:
+        st.session_state.history.append(final_query)
+        if len(st.session_state.history) > 10:
+            st.session_state.history.pop(0)
     
     results = st.session_state.active_query_results
     total = st.session_state.total_results
