@@ -1,9 +1,9 @@
-# Data (Ignore both at root and in data/ folder)
+# Data (Ignore for GitHub)
 books.db
 vector_store/
 data/
-*.csv
 chroma.sqlite3
+*.csv
 
 # Python
 __pycache__/
