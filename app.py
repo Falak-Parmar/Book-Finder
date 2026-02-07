@@ -9,7 +9,17 @@ from sqlalchemy.orm import Session
 APP_VERSION = "v1.2-STABLE"
 
 # Add project root to sys.path
-sys.path.append(os.getcwd())
+import argparse
+
+# Parse CLI arguments (for Streamlit, pass args after --)
+parser = argparse.ArgumentParser(description="Book Finder App")
+parser.add_argument("--api-url", type=str, default=None, help="Override API URL")
+try:
+    args, unknown = parser.parse_known_args()
+    if args.api_url:
+        os.environ["API_URL"] = args.api_url
+except SystemExit:
+    pass
 
 API_URL = os.environ.get("API_URL")
 

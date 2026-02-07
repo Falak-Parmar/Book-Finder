@@ -26,20 +26,23 @@ def prepare_book_text(book):
     
     return " | ".join(parts)
 
-def index_all_books():
+import argparse
+
+def index_all_books(batch_size=100, limit=None):
     print("Initializing Database and Embedding Manager...")
     session = db.SessionLocal()
     manager = EmbeddingManager()
     
     print("Fetching books from SQLite...")
-    books = session.query(db.Book).all()
+    if limit:
+        books = session.query(db.Book).limit(limit).all()
+    else:
+        books = session.query(db.Book).all()
     print(f"Found {len(books)} books.")
     
     ids = []
     texts = []
     metadatas = []
-    
-    batch_size = 100
     
     for i, book in enumerate(books):
         # We use ISBN_13 or Google ID as a stable identifier in ChromaDB
@@ -74,4 +77,10 @@ def index_all_books():
     session.close()
 
 if __name__ == "__main__":
-    index_all_books()
+    parser = argparse.ArgumentParser(description="Index Books for Semantic Search")
+    parser.add_argument("--batch-size", type=int, default=100, help="Number of records to index per batch")
+    parser.add_argument("--limit", type=int, default=None, help="Limit number of books to index (for testing)")
+    
+    args = parser.parse_args()
+    
+    index_all_books(batch_size=args.batch_size, limit=args.limit)

@@ -11,9 +11,9 @@ pinned: false
 
 # Book Finder — Big Data Engineering  
 ### End-to-End ETL Pipeline + Google Books Enrichment + FastAPI Service  
-**Phase 1 Data Engineering Project**
+**Phase 2 Semantic Search Project**
 
----
+🚀 **Live Deployment**: [Book Finder v2 on Hugging Face Spaces](https://huggingface.co/spaces/arcane-bit/book-finder-v2)
 
 ## 1. Introduction & Motivation
 
@@ -247,7 +247,37 @@ python storage/storage.py
 
 ---
 
-## 7. FastAPI Service
+## 7. 🧠 Phase 2: Semantic Search & ML Implementation
+
+Phase 1 focused on data engineering and enrichment. Phase 2 transforms that data into a searchable knowledge base using **Vector Embeddings**.
+
+### 7.1 Model Choice: `all-MiniLM-L6-v2`
+We use the `all-MiniLM-L6-v2` model from the `sentence-transformers` library.
+- **Dimensionality**: 384-dimensional dense vectors.
+- **Why this model?**: It offers an excellent balance between speed and performance. It is small (~80MB) and fast enough for real-time CPU-based search on Hugging Face Spaces while maintaining high semantic accuracy.
+- **Embedding Generation**: Captured in `ml/embeddings.py` using the `SentenceTransformer` class.
+
+### 7.2 Vector Store: ChromaDB
+- **Technology**: **ChromaDB** is used as our vector database. It is an open-source embedding database suited for local deployments.
+- **Configuration**: Uses `hnsw:space: "cosine"` to calculate similarity between the query and the library records.
+- **Persistence**: Data is saved locally in `data/vector_store/`, allowing the index to be reusable without re-generation.
+
+### 7.3 Indexing Pipeline (`ml/index_books.py`)
+To build the searchable index, we perform the following:
+1.  **Context Assembly**: For every book, we combine fields into a single "document" string:  
+    `Title | Subtitle | Authors | Categories | Description`
+2.  **Batch Processing**: Books are processed in batches (default: 100) to optimize memory usage and indexing speed.
+3.  **Unique Identifiers**: We use `ISBN-13` as the primary key in ChromaDB to ensure a 1:1 mapping back to the SQLite records.
+
+### 7.4 UI Integration (`app.py`)
+The semantic search is seamlessly integrated into the Streamlit dashboard:
+- **On-the-fly Embedding**: When a user types a query (e.g., "History of Space travel"), the app generates a vector for that query in real-time.
+- **Relevance Ranking**: ChromaDB returns the Top 300 matches based on cosine distance.
+- **Threshold Filtering**: We apply a `DISTANCE_THRESHOLD` (0.7) to ensure only highly relevant books are displayed to the user.
+
+---
+
+## 8. FastAPI & UI Service
 
 The FastAPI layer provides **read-only access** to the final dataset and **control access** to the pipeline.
 
@@ -256,8 +286,10 @@ The FastAPI layer provides **read-only access** to the final dataset and **contr
 ```bash
 python api/serving.py --reload
 ```
-
-### Key Endpoints
+or via the Streamlit UI:
+```bash
+streamlit run app.py -- --api-url http://localhost:8000
+```
 
 - `GET /books/` – Paginated book listing  
 - `GET /books/{isbn}` – ISBN lookup  
@@ -269,11 +301,11 @@ http://127.0.0.1:8000/docs
 
 ---
 
-## 8. Pipeline Statistics
+## 9. Pipeline Statistics
 
 All statistics can be reproduced using `analysis/metrics_analysis.py` or the `analysis/project_metrics.ipynb` notebook.
 
-### 8.1 Data Flow Summary
+### 9.1 Data Flow Summary
 
 | Stage | Input Records | Output Records | Success Rate |
 |------|--------------:|---------------:|-------------:|
@@ -282,7 +314,7 @@ All statistics can be reproduced using `analysis/metrics_analysis.py` or the `an
 | **Transformation** | 33,502 | 26,173 | **78.1%** (Dedup) |
 | **Final DB** | 26,173 | 26,173 | **100%** |
 
-### 8.2 Enrichment Quality
+### 9.2 Enrichment Quality
 
 | Metric | Value |
 |------|------:|
@@ -296,7 +328,7 @@ All statistics can be reproduced using `analysis/metrics_analysis.py` or the `an
 
 ---
 
-## 9. Data Dictionary (Core Fields)
+## 10. Data Dictionary (Core Fields)
 
 | Field | Description |
 |------|------------|
@@ -312,7 +344,7 @@ All statistics can be reproduced using `analysis/metrics_analysis.py` or the `an
 
 ---
 
-## 10. Design Philosophy
+## 11. Design Philosophy
 
 This project emphasizes:
 
@@ -323,7 +355,7 @@ This project emphasizes:
 
 ---
 
-## 11. Conclusion
+## 12. Conclusion
 
 This project demonstrates a **complete, production-style data pipeline**:
 

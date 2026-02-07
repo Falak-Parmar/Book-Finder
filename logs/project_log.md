@@ -227,20 +227,74 @@ This setup ensures that the heavy ML lifting and data storage happen on a dedica
 
 ---
 
+---
+
+### 🟤 Session 11: The CLI Transformation
+
+**USER**: "The scripts are great, but everything is hardcoded. I can't easily change input files or limits without editing code. Add a proper CLI."
+
+**ASSISTANT**: "You're right. Hardcoded paths are an anti-pattern. We need to expose these parameters via a standard command-line interface. I'll implement `argparse` across the board.
+
+**Implementation Plan**:
+1.  **Refactor**: Modify `if __name__ == '__main__':` blocks in all scripts.
+2.  **`transformation.py`**: Add flags for `--input`, `--csv-input`, `--output`, and `--dedup-output`. This allows running the transformation on test datasets without touching the production data.
+3.  **`storage.py`**: Expose `--input` so we can ingest subsets of data or recovery files.
+4.  **`sync_pipeline.py`**: Add `--shelf-id` override. This is crucial if the library changes the shelf ID for 'New Arrivals' or if we want to scrape a different collection (e.g., 'Reference Books').
+5.  **`api/serving.py`**: Allow `--host` and `--port` configuration. This is essential for deployment environments (e.g., binding to `0.0.0.0` inside a Docker container vs `127.0.0.1` locally).
+6.  **`main.py`**: Add 'skip' flags (`--skip-sync`, `--skip-ingestion`, etc.) to allow granular execution of pipeline stages.
+
+**Outcome**: 
+The entire system is now CLI-driven. You can now run the full pipeline with a single command or debug individual components in isolation without code changes:
+```bash
+python main.py --skip-sync --ingest-limit 10
+```
+This flexibility brings the project closer to production readiness."
+
+---
+
+### 🌑 Session 12: Full CLI Coverage & Metrics Refinement
+
+**USER**: "The main pipeline has a CLI, but `app.py` and the analysis scripts are still hardcoded. Also, our `README.md` metrics are stale placeholders. Let's fix this."
+
+**ASSISTANT**: "A consistent developer experience is key. If `main.py` uses flags, so should everything else.
+
+**Work Done**:
+1.  **`analysis/metrics_analysis.py`**:
+    *   Previously: Hardcoded paths to `../data/raw`.
+    *   Now: Uses `argparse` to accept `--csv-source`, `--ingested`, and `--final-output`.
+    *   **Fix**: Handled a critical `UnicodeDecodeError` by implementing a fallback to `latin1` encoding for the legacy CSV.
+
+2.  **`ml/index_books.py`**:
+    *   Refactored to accept `--batch-size` and `--limit`. This is crucial for testing the vector index build without committing 30 minutes to run all 26k records.
+
+3.  **`app.py`**:
+    *   Streamlit typically hijacks command-line args, which makes passing custom flags hard.
+    *   **Solution**: We used `parser.parse_known_args()`. This allows us to pass optional flags like `--api-url` after a double dash (e.g., `streamlit run app.py -- --api-url http://locahost:8000`).
+
+4.  **Documentation Sync**:
+    *   Updated `README.md` with the new commands.
+    *   Refreshed the 'Pipeline Statistics' section with real numbers from the code execution."
+
+**Outcome**:
+Every single Python entry point in the repository now supports `--help` and configuration flags. The project documentation accurately reflects the current state of the codebase.
+
+---
+
 ### 📈 Current Project Metrics
 - **Total Records Processed**: 27,913
 - **Total Records Indexed**: 27,913
 - **Deployment Architecture**: Split (Render Backend + Streamlit Cloud Frontend)
 - **Model Loading**: Pre-cached in Docker layers
 - **Average Semantic Latency**: <50ms (cached embedding lookup)
-- **Branding Modernization**: Transitioned to DAU 2026 guidelines
+- **Full CLI Support**: All entry points (main, ingestion, storage, ml, api, app)
 
 ---
 
 ### 🏁 Final State
-The Book-Finder project is now a production-ready, full-stack search ecosystem. Over ten sessions, it has evolved from a raw CSV file into a sophisticated platform featuring:
+The Book-Finder project is now a production-ready, full-stack search ecosystem. Over twelve sessions, it has evolved from a raw CSV file into a sophisticated platform featuring:
 - **High-Volume Ingestion**: Altcha-aware, asynchronous enrichment via Google Books.
 - **Robust Storage**: SQLAlchemy-backed SQLite with automated deduplication.
 - **Vector Search**: Sentence-transformers + ChromaDB for meaning-based discovery.
 - **Dual-Theme Premium UI**: A paginated, high-contrast Streamlit dashboard with history integration.
 - **Production-Ready Deployment**: A split-cloud architecture with Gunicorn/Uvicorn, Model Pre-caching, and Remote API support.
+- **Integrated CLI**: A unified command-line experience across all components for maximum flexibility.
