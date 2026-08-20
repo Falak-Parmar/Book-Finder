@@ -343,3 +343,15 @@ It bridges the gap between 'operational' library lists and 'analytical' datasets
 **202518035 : Aditya Jana**  
 
 DA-IICT — Big Data Engineering
+
+## Trust & Transparency notes
+
+- **Source & Attribution**: Developed as an academic group project for the Big Data Engineering course at DA-IICT by me and my partner, Aditya Jana. The raw data source consists of library physical records, Koha OPAC catalogs, and the Google Books API.
+- **Motive**: Created to learn and demonstrate core data engineering ETL pipeline principles, specifically focusing on async scraping, rate-limited ingestion, deduplication hierarchies, relational persistence, and serving APIs.
+- **Modifications**: Engineered Koha OPAC synchronization scripts, async bulk Google Books enrichment, cleaning/deduplication matching algorithms, and FastAPI endpoints.
+- **Limitations**:
+  - The library sync crawler depends on the physical library's Koha OPAC HTML structure; modifications to their web pages will break the scraper.
+  - Google Books API query matching fails for niche academic publications, resulting in incomplete metadata for a portion of the catalog.
+  - The SQLite database engine is optimized for local read-heavy operations and single-node instances, requiring migration to a distributed DB (e.g., PostgreSQL) for enterprise deployments.
+- **Tooling & AI Usage**: AI coding assistants were utilized to generate the async HTTP connections with `aiohttp` for rate-limiting compliance and format the Streamlit search GUI.
+
