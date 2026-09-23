@@ -13,6 +13,8 @@ pinned: false
 ### End-to-End ETL Pipeline + Google Books Enrichment + FastAPI Service  
 **Phase 1 Data Engineering Project**
 
+🚀 **Live Deployment**: [Book Finder v2 on Hugging Face Spaces](https://huggingface.co/spaces/arcane-bit/book-finder-v2)
+
 ---
 
 ## 1. Introduction & Motivation
@@ -255,6 +257,10 @@ The FastAPI layer provides **read-only access** to the final dataset and **contr
 
 ```bash
 python api/serving.py --reload
+```
+or via the Streamlit UI:
+```bash
+streamlit run app.py -- --api-url http://localhost:8000
 ```
 
 ### Key Endpoints

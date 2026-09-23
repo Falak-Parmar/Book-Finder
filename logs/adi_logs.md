@@ -164,3 +164,31 @@ This flexibility brings the project closer to production readiness."
 
 ### 🏁 Final State
 The Book-Finder pipeline is now a professional-grade ETL system. It bridges the gap between 'dumb' library accession lists and a 'smart' semantic database. It is resilient to API errors, handles web-security hurdles gracefully, and provides a clean interface for downstream Data Science tasks.
+
+---
+
+### 🟤 Session 8: Full CLI Coverage & Metrics Refinement
+
+**USER**: "The main pipeline has a CLI, but `app.py` and the analysis scripts are still hardcoded. Also, our `README.md` metrics are stale placeholders. Let's fix this."
+
+**ASSISTANT**: "A consistent developer experience is key. If `main.py` uses flags, so should everything else.
+
+**Work Done**:
+1.  **`analysis/metrics_analysis.py`**:
+    *   Previously: Hardcoded paths to `../data/raw`.
+    *   Now: Uses `argparse` to accept `--csv-source`, `--ingested`, and `--final-output`.
+    *   **Fix**: Handled a critical `UnicodeDecodeError` by implementing a fallback to `latin1` encoding for the legacy CSV.
+
+2.  **`ml/index_books.py`**:
+    *   Refactored to accept `--batch-size` and `--limit`. This is crucial for testing the vector index build without committing 30 minutes to run all 26k records.
+
+3.  **`app.py`**:
+    *   Streamlit typically hijacks command-line args, which makes passing custom flags hard.
+    *   **Solution**: We used `parser.parse_known_args()`. This allows us to pass optional flags like `--api-url` after a double dash (e.g., `streamlit run app.py -- --api-url http://locahost:8000`).
+
+4.  **Documentation Sync**:
+    *   Updated `README.md` with the new commands.
+    *   Refreshed the 'Pipeline Statistics' section with real numbers from the code execution."
+
+**Outcome**:
+Every single Python entry point in the repository now supports `--help` and configuration flags. The project documentation accurately reflects the current state of the codebase.
